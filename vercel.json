@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci --legacy-peer-deps",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- .",
+  "env": {
+    "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
+
