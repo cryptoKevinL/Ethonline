@@ -60,6 +60,26 @@ export interface EmployerProfileData {
   email: string
 }
 
+export interface Payment {
+  id: string
+  employment_id: string
+  employer_id: string
+  employee_id: string
+  chain: string
+  token: string
+  token_contract?: string
+  token_decimals?: number
+  amount_token: string // Numeric amount with precision (78, 18)
+  period_start?: string // Date
+  period_end?: string // Date
+  pay_date: string // Date, defaults to CURRENT_DATE
+  recipient: string // Employee wallet address
+  tx_hash?: string // Transaction hash
+  status: 'pending' | 'confirmed' | 'failed'
+  created_at: string
+  updated_at: string
+}
+
 export interface EmployeeProfileData {
   first_name: string
   last_name: string

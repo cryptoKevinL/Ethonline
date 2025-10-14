@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Search, Plus, Edit2, Trash2, Save, Loader2, Send, ExternalLink, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useNotification, useTransactionPopup } from "@blockscout/app-sdk";
+// Removed Blockscout SDK imports since we're using Supabase function instead
 import { ProfileService } from "@/lib/profileService";
+import { useAccount } from 'wagmi';
 
 interface Employee {
   id: string;
@@ -51,8 +52,8 @@ const EditGroup = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { openTxToast } = useNotification();
-  const { openPopup } = useTransactionPopup();
+  const { address } = useAccount();
+  // Removed useTransactionPopup since we're not using Blockscout SDK anymore
 
   // Convert token amounts to USDC equivalent
   const convertToUSDC = (amount: number, token: string): number => {
@@ -212,9 +213,18 @@ const EditGroup = () => {
         description: `Processing payment for ${employee.first_name} ${employee.last_name}`,
       });
 
-      // Use Blockscout SDK to show transaction toast
-      // Using Ethereum mainnet (chain ID "1") for demo
-      await openTxToast("1", knownGoodTxHash);
+      // Wait 5 seconds for transaction to be indexed by explorer, then lookup
+      setTimeout(async () => {
+        try {
+          const response = await fetch(`https://memgpowzdqeuwdpueajh.functions.supabase.co/blockscout?chain=optimism-sepolia&hash=${knownGoodTxHash}&api=v2`);
+          if (response.ok) {
+            const txData = await response.json();
+            console.log('Demo transaction data from Blockscout:', txData);
+          }
+        } catch (error) {
+          console.log('Transaction lookup not available:', error);
+        }
+      }, 5000); // Wait 5 seconds
       
     } catch (error) {
       console.error('Error processing payment:', error);
@@ -228,11 +238,36 @@ const EditGroup = () => {
     }
   };
 
-  const handleViewTransactionHistory = () => {
-    // Open transaction history popup for Ethereum mainnet
-    openPopup({
-      chainId: "1", // Ethereum mainnet
-    });
+  const handleViewTransactionHistory = async () => {
+    if (!address) {
+      toast({
+        title: "Error",
+        description: "Please connect your wallet to view transaction history",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Use Supabase function to fetch recent transactions
+      const response = await fetch(`https://memgpowzdqeuwdpueajh.functions.supabase.co/blockscout?chain=optimism-sepolia&address=${address}&api=v2`);
+      if (response.ok) {
+        const txData = await response.json();
+        console.log('Transaction history:', txData);
+        // You can display this data in a modal or component instead of opening a new tab
+        toast({
+          title: "Transaction History",
+          description: `Found ${txData.result?.length || 0} transactions`,
+        });
+      }
+    } catch (error) {
+      console.log('Error fetching transaction history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch transaction history",
+        variant: "destructive",
+      });
+    }
   };
 
   // Search functionality
