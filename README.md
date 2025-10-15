@@ -1,73 +1,104 @@
-# Welcome to your Lovable project
+# PayStream - Web3 Payment Management
 
-## Project info
+A modern Web3 payment management system for employers and employees, built with React, TypeScript, and Supabase.
 
-**URL**: https://lovable.dev/projects/c1c79263-ff78-4f97-9e65-ea42e22a09d9
+## Features
 
-## How can I edit this code?
+- **Employer Dashboard**: Manage payment groups, process payments, and track transaction history
+- **Employee Portal**: View payment history, monitor wallet transactions, and track employment details
+- **Web3 Integration**: Support for multiple blockchains and tokens
+- **Real-time Monitoring**: Track blockchain transactions and payment status
+- **Database Integration**: Store payment records and employment data
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend**: React 18, TypeScript, Vite
+- **UI**: shadcn/ui, Tailwind CSS
+- **Web3**: Wagmi, Nexus SDK
+- **Backend**: Supabase (Database, Auth, Edge Functions)
+- **Blockchain**: Blockscout API integration
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/c1c79263-ff78-4f97-9e65-ea42e22a09d9) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js 18+ and npm
+- Supabase account and project
+- Web3 wallet (MetaMask, etc.)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd paystream
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your Supabase credentials
+
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Environment Variables
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Create a `.env.local` file with the following variables:
 
-**Use GitHub Codespaces**
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_BLOCKSCOUT_API_KEY=your_blockscout_api_key
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+src/
+├── components/          # Reusable UI components
+├── pages/              # Page components
+│   ├── admin/          # Admin dashboard pages
+│   ├── employee/       # Employee portal pages
+│   └── Landing.tsx     # Landing page
+├── lib/                # Utility functions and services
+│   ├── supabase.ts     # Supabase client and types
+│   └── profileService.ts # Business logic services
+└── providers/          # React context providers
+```
 
-This project is built with:
+## Development
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+# Start development server
+npm run dev
 
-## How can I deploy this project?
+# Build for production
+npm run build
 
-Simply open [Lovable](https://lovable.dev/projects/c1c79263-ff78-4f97-9e65-ea42e22a09d9) and click on Share -> Publish.
+# Preview production build
+npm run preview
+```
 
-## Can I connect a custom domain to my Lovable project?
+## Deployment
 
-Yes, you can!
+The application can be deployed to any static hosting service:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- **Vercel**: Connect your GitHub repository
+- **Netlify**: Deploy from Git or drag & drop
+- **Supabase**: Use Supabase hosting
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.

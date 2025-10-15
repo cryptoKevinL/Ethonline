@@ -272,7 +272,7 @@ const { disconnect } = useDisconnect();
    - IPFS for documents
 
 3. **Backend API**
-   - Use Lovable Cloud / Supabase for authentication
+   - Use Supabase for authentication
    - Store off-chain data in PostgreSQL
    - Sync critical data to blockchain
 
