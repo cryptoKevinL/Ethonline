@@ -112,6 +112,72 @@ export function IntentCard({ intent, index }: IntentCardProps) {
           </div>
         </div>
 
+        {/* Simplified Payment Flow */}
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200/50">
+          <div className="flex items-center justify-between">
+            {/* Sender */}
+            <div className="flex flex-col items-center space-y-2">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">S</span>
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-1">Sender</p>
+                <p className="font-mono text-xs bg-white/50 px-2 py-1 rounded">
+                  {intent.sender?.slice(0, 6)}...{intent.sender?.slice(-4)}
+                </p>
+              </div>
+            </div>
+
+            {/* Arrow */}
+            <div className="flex flex-col items-center space-y-2">
+              <ArrowRight className="h-5 w-5 text-blue-500" />
+              <div className="text-xs text-muted-foreground text-center">
+                <p className="font-semibold">{intent.sourceAmount} {intent.sourceCurrency}</p>
+                <p className="text-xs">{intent.sourceChain}</p>
+              </div>
+            </div>
+
+            {/* Avail */}
+            <div className="flex flex-col items-center space-y-2">
+              <div className="p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">A</span>
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-1">Avail</p>
+                <p className="text-xs font-semibold text-purple-600">Holds Funds</p>
+              </div>
+            </div>
+
+            {/* Arrow */}
+            <div className="flex flex-col items-center space-y-2">
+              <ArrowRight className="h-5 w-5 text-green-500" />
+              <div className="text-xs text-muted-foreground text-center">
+                <p className="font-semibold">{intent.destAmount} {intent.destCurrency}</p>
+                <p className="text-xs">{intent.destChain}</p>
+              </div>
+            </div>
+
+            {/* Recipient */}
+            <div className="flex flex-col items-center space-y-2">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">R</span>
+                </div>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-1">Recipient</p>
+                <p className="font-mono text-xs bg-white/50 px-2 py-1 rounded">
+                  {(paymentData?.recipient || intent.recipient)?.slice(0, 6)}...{(paymentData?.recipient || intent.recipient)?.slice(-4)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Complete Payment Flow */}
         <div className="space-y-4">
           {/* Flow Header */}

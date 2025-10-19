@@ -49,8 +49,6 @@ const Groups = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<{ [key: string]: 'success' | 'error' | 'processing' }>({});
-  const [databasePayments, setDatabasePayments] = useState<any[]>([]);
-  const [isLoadingDatabasePayments, setIsLoadingDatabasePayments] = useState(false);
   const [userIntents, setUserIntents] = useState<any[]>([]);
   const [allUserIntents, setAllUserIntents] = useState<any[]>([]);
   const [isLoadingIntents, setIsLoadingIntents] = useState(false);
@@ -98,8 +96,9 @@ const Groups = () => {
 
   useEffect(() => {
     if (address) {
-      fetchDatabasePayments();
       fetchUserIntents(1);
+      // Also load existing payments from database as intents
+      loadDatabasePaymentsAsIntents();
     }
   }, [address, groups]);
 
@@ -195,6 +194,17 @@ const Groups = () => {
       console.log('Transfer Parameters:', transferParams);
       console.log('Employee Data:', employee);
 
+      // Run simulation first
+      try {
+        console.log('=== RUNNING NEXUS SDK SIMULATION ===');
+        const simulationResult = await nexusSDK.simulateTransfer(transferParams);
+        console.log('Simulation Result:', simulationResult);
+        console.log('=== SIMULATION COMPLETE ===');
+      } catch (simulationError) {
+        console.error('Simulation Error:', simulationError);
+        console.log('Continuing with payment despite simulation error...');
+      }
+
       const transferResult = await nexusSDK.transfer(transferParams);
 
     // PRINT TRANSFER RESULT TO CONSOLE
@@ -206,16 +216,6 @@ const Groups = () => {
     if (transferResult.success) {
       console.log('Transaction Hash:', transferResult.transactionHash);
       console.log('Explorer URL:', transferResult.explorerUrl);
-      console.log('Intent ID (intentId):', (transferResult as any).intentId);
-      console.log('Intent ID (intent_id):', (transferResult as any).intent_id);
-      console.log('Intent ID (id):', (transferResult as any).id);
-      
-      // Log additional transaction hash properties
-      console.log('Source TX Hash:', (transferResult as any).sourceTxHash);
-      console.log('Deposit TX Hash:', (transferResult as any).depositTxHash);
-      console.log('Initial TX Hash:', (transferResult as any).initialTxHash);
-      console.log('Dest TX Hash:', (transferResult as any).destTxHash);
-      console.log('Fulfillment TX Hash:', (transferResult as any).fulfillmentTxHash);
     } else {
       console.log('Error:', "Transfer failed");
     }
@@ -623,23 +623,58 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
          }
   };
 
-  const fetchDatabasePayments = async () => {
+
+  // Load existing payments from database and show them as intents immediately
+  const loadDatabasePaymentsAsIntents = async () => {
     if (!address) return;
 
-    setIsLoadingDatabasePayments(true);
     try {
       if (groups.length > 0 && groups[0].employer?.id) {
-        const paymentsResult = await ProfileService.getEmployerPayments(groups[0].employer.id, 10);
+        const paymentsResult = await ProfileService.getEmployerPayments(groups[0].employer.id, 20);
         
         if (paymentsResult.success && paymentsResult.data) {
-          console.log('Database payments:', paymentsResult.data);
-          setDatabasePayments(paymentsResult.data);
+          console.log('Loading database payments as intents:', paymentsResult.data);
+          
+          // Convert database payments to intent format
+          const databaseIntents = paymentsResult.data.map((payment: any) => ({
+            intentId: payment.intent_id,
+            sourceAmount: payment.amount_token,
+            sourceCurrency: payment.token?.toUpperCase() || 'ETH',
+            destAmount: payment.amount_token, // Assuming same amount for now
+            destCurrency: payment.token?.toUpperCase() || 'ETH',
+            sourceChain: payment.chain,
+            destChain: payment.chain, // Assuming same chain for now
+            status: payment.status === 'confirmed' ? 'SUCCESS' : 'PENDING',
+            timestamp: new Date(payment.created_at).getTime() / 1000,
+            sender: address,
+            recipient: payment.recipient,
+            solver: payment.deposit_solver_address || '0x247365225B96Cd8bc078F7263F6704f3EaD96494',
+            totalFees: '0.0001', // Default fee
+            senderToSolverHash: payment.first_tx_hash,
+            solverToReceiverHash: payment.tx_hash,
+            hasRealData: true,
+            sourceChainId: 11155111, // Default to Sepolia
+            destinationChainId: 11155111
+          }));
+
+          // Merge with existing intents (avoid duplicates)
+          setUserIntents(prevIntents => {
+            const existingIds = new Set(prevIntents.map(intent => intent.intentId));
+            const newIntents = databaseIntents.filter(intent => !existingIds.has(intent.intentId));
+            return [...newIntents, ...prevIntents].slice(0, 3);
+          });
+
+          setAllUserIntents(prevIntents => {
+            const existingIds = new Set(prevIntents.map(intent => intent.intentId));
+            const newIntents = databaseIntents.filter(intent => !existingIds.has(intent.intentId));
+            return [...newIntents, ...prevIntents];
+          });
+
+          console.log('✅ Database payments loaded as intents');
         }
       }
     } catch (error) {
-      console.error('Error fetching database payments:', error);
-    } finally {
-      setIsLoadingDatabasePayments(false);
+      console.error('Error loading database payments as intents:', error);
     }
   };
 
@@ -744,12 +779,6 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
                 onToggleShowAll={handleShowAllIntents}
               />
 
-              {/* Database Payments Section */}
-              <PaymentHistory
-                payments={databasePayments}
-                isLoading={isLoadingDatabasePayments}
-                onRefresh={fetchDatabasePayments}
-              />
             </>
           )}
         </motion.div>
