@@ -7,6 +7,43 @@ import { ProfileService } from "@/lib/profileService";
 import { useState, useEffect } from "react";
 import { getBlockscoutUrl } from "@/utils/extractIntentData";
 
+// Helper function to get chain name for Supabase function
+const getChainName = (chainId: number): string => {
+  const chainMap: Record<number, string> = {
+    11155111: 'eth-sepolia', // Ethereum Sepolia
+    11155420: 'optimism-sepolia', // Optimism Sepolia
+    84532: 'base-sepolia', // Base Sepolia
+    80002: 'polygon-amoy', // Polygon Amoy
+    421614: 'arbitrum-sepolia' // Arbitrum Sepolia
+  };
+  return chainMap[chainId] || 'optimism-sepolia';
+};
+
+// Helper function to search for transactions using Supabase function
+const searchTransactionsWithSupabase = async (chainId: number, address: string, useInternal = false, action = 'txlist') => {
+  const chainName = getChainName(chainId);
+  const supabaseUrl = 'https://memgpowzdqeuwdpueajh.functions.supabase.co/blockscout';
+  let url;
+  
+  if (useInternal) {
+    // Use direct Blockscout v2 internal transactions API
+    url = `https://${chainName}.blockscout.com/api/v2/addresses/${address}/internal-transactions`;
+  } else if (action === 'tokentx') {
+    url = `${supabaseUrl}?chain=${chainName}&address=${address}&api=v1&module=account&action=tokentx&page=1&offset=100`;
+  } else {
+    url = `${supabaseUrl}?chain=${chainName}&address=${address}&api=v1&page=1&offset=100`;
+  }
+  
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    return null;
+  }
+};
+
 interface Intent {
   intentId: string;
   sourceAmount: string;
@@ -333,30 +370,111 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                     <p className="text-yellow-800 font-medium">Solver Action:</p>
                     <p className="text-yellow-700">Sends {intent.destCurrency} back to employer on {intent.destChain}</p>
                   </div>
-                  {(paymentData?.tx_hash || intent.solverToReceiverHash) && (
+                  {(paymentData?.solver_to_employer_hash || intent.solverToReceiverHash) && (
                     <div className="pt-2 border-t border-yellow-200/50">
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-xs">Transfer TX:</span>
+                        <span className="text-muted-foreground text-xs">Solver TX:</span>
                         <Button
                           variant="link"
                           className="h-auto p-0 text-xs"
-                          onClick={() => window.open(
-                            getBlockscoutUrl(intent.destinationChainId, undefined, paymentData?.tx_hash || intent.solverToReceiverHash), 
-                            '_blank'
-                          )}
+                          onClick={async () => {
+                            const txHash = paymentData?.solver_to_employer_hash || intent.solverToReceiverHash;
+                            console.log('Step 2 TX Hash:', txHash, 'Length:', txHash?.length);
+                            
+                            // If we don't have the solver_to_employer_hash, search for it
+                            if (!paymentData?.solver_to_employer_hash) {
+                              console.log('🔍 Searching for solver → employer transaction...');
+                              console.log('Solver address:', intent.solver);
+                              console.log('Employer address:', intent.sender);
+                              console.log('Destination chain ID:', intent.destinationChainId);
+                              
+                              try {
+                                // Try regular transactions first
+                                console.log('🔍 Searching regular transactions...');
+                                const transactions = await searchTransactionsWithSupabase(intent.destinationChainId, intent.solver, false);
+                                console.log('Solver transactions (regular):', transactions);
+                                
+                                let employerTx = null;
+                                
+                                if (transactions && transactions.result) {
+                                  console.log('📊 Total regular transactions found:', transactions.result.length);
+                                  
+                                  // Find transaction where 'to' field matches employer address
+                                  employerTx = transactions.result.find((tx: any) => 
+                                    tx.to && tx.to.toLowerCase() === intent.sender.toLowerCase()
+                                  );
+                                  
+                                  if (employerTx) {
+                                    console.log('✅ Found solver → employer transaction (regular):', employerTx.hash);
+                                  }
+                                }
+                                
+                                // If not found in regular transactions, try internal transactions
+                                if (!employerTx) {
+                                  console.log('❌ No transaction found in regular transactions, trying internal transactions...');
+                                  const internalTransactions = await searchTransactionsWithSupabase(intent.destinationChainId, intent.solver, true);
+                                  console.log('Solver internal transactions:', internalTransactions);
+                                  
+                                  if (internalTransactions && internalTransactions.items) {
+                                    console.log('📊 Total internal transactions found:', internalTransactions.items.length);
+                                    
+                                    // Just take the first (most recent) internal transaction
+                                    employerTx = internalTransactions.items[0];
+                                    
+                                    if (employerTx) {
+                                      console.log('✅ Found solver → employer transaction (internal):', employerTx.transaction_hash);
+                                      // Update the hash to use the correct field
+                                      employerTx.hash = employerTx.transaction_hash;
+                                    } else {
+                                      console.log('❌ No transaction found in internal transactions either');
+                                      console.log('🔍 Available internal transactions:');
+                                      internalTransactions.items.slice(0, 5).forEach((tx: any, index: number) => {
+                                        console.log(`  ${index + 1}. From: ${tx.from?.hash}, To: ${tx.to?.hash}, Hash: ${tx.transaction_hash}`);
+                                      });
+                                    }
+                                  }
+                                }
+                                
+                                if (employerTx) {
+                                  console.log('Full hash:', employerTx.hash);
+                                  console.log('Hash length:', employerTx.hash.length);
+                                  
+                                  // Open the transaction
+                                  window.open(
+                                    getBlockscoutUrl(intent.destinationChainId, undefined, employerTx.hash), 
+                                    '_blank'
+                                  );
+                                } else {
+                                  console.log('💡 Possible issues:');
+                                  console.log('  - Transaction not yet mined');
+                                  console.log('  - Wrong solver address');
+                                  console.log('  - Wrong employer address');
+                                  console.log('  - Transaction on different chain');
+                                  console.log('  - Transaction is neither regular nor internal');
+                                }
+                              } catch (error) {
+                                console.error('Error searching for transactions:', error);
+                              }
+                            } else {
+                              window.open(
+                                getBlockscoutUrl(intent.destinationChainId, undefined, txHash), 
+                                '_blank'
+                              );
+                            }
+                          }}
                         >
                           View TX
                         </Button>
                       </div>
                       <div className="flex items-center gap-1">
                         <p className="font-mono text-xs break-all">
-                          {(paymentData?.tx_hash || intent.solverToReceiverHash).slice(0, 10)}...{(paymentData?.tx_hash || intent.solverToReceiverHash).slice(-8)}
+                          {(paymentData?.solver_to_employer_hash || intent.solverToReceiverHash).slice(0, 10)}...{(paymentData?.solver_to_employer_hash || intent.solverToReceiverHash).slice(-8)}
                         </p>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-4 w-4"
-                          onClick={() => copyToClipboard(paymentData?.tx_hash || intent.solverToReceiverHash, "Transaction hash")}
+                          onClick={() => copyToClipboard(paymentData?.solver_to_employer_hash || intent.solverToReceiverHash, "Solver transaction hash")}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -476,7 +594,7 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                           variant="ghost"
                           size="icon"
                           className="h-4 w-4"
-                          onClick={() => copyToClipboard(paymentData?.tx_hash || intent.solverToReceiverHash, "Transaction hash")}
+                          onClick={() => copyToClipboard(paymentData?.tx_hash || intent.solverToReceiverHash, "Final transaction hash")}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>

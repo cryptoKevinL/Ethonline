@@ -74,9 +74,10 @@ export interface Payment {
   period_end?: string // Date
   pay_date: string // Date, defaults to CURRENT_DATE
   recipient: string // Employee wallet address
-  tx_hash?: string // Transaction hash
+  tx_hash?: string // Final transaction hash (Step 3: Employer → Employee)
   intent_id: string // Intent ID from Nexus SDK (NOT NULL)
-  first_tx_hash: string // First transaction hash (NOT NULL)
+  first_tx_hash: string // First transaction hash (Step 1: Employer → Solver)
+  solver_to_employer_hash?: string // Intermediate transaction hash (Step 2: Solver → Employer)
   deposit_solver_address?: string // Solver address from deposit transaction data
   solver_address?: string // Standard solver address (0x247365...D96494)
   status: 'pending' | 'confirmed' | 'failed'

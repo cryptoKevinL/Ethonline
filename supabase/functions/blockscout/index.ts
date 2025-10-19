@@ -99,36 +99,90 @@ serve(async (req: Request) => {
     const address = url.searchParams.get("address");
     if (address) {
       console.log("Fetching transactions for address:", address);
+      
+      // Check if this is an internal transactions request
+      const module = url.searchParams.get("module");
+      const action = url.searchParams.get("action");
+      
       if (api === "v1") {
-        // etherscan-compatible (allows offset):
-        const page = url.searchParams.get("page") ?? "1";
-        const offset = url.searchParams.get("offset") ?? "50";
-        const qs = new URLSearchParams({
-          module: "account", action: "txlist",
-          address, page, offset, sort: "desc"
-        });
-        const target = `https://${host}/api?${qs.toString()}`;
-        const r = await fetch(target, { headers: { accept: "application/json", ...(BLOCKSCOUT_API_KEY ? { "X-API-KEY": BLOCKSCOUT_API_KEY } : {}) }});
-        const body = await r.text();
-        return new Response(body, { status: r.status, headers: { ...headers, "Content-Type": "application/json" }});
+        if (module === "account" && action === "txlistinternal") {
+          // Internal transactions v1 API
+          const page = url.searchParams.get("page") ?? "1";
+          const offset = url.searchParams.get("offset") ?? "50";
+          const qs = new URLSearchParams({
+            module: "account", action: "txlistinternal",
+            address, page, offset, sort: "desc"
+          });
+          const target = `https://${host}/api?${qs.toString()}`;
+          const r = await fetch(target, { headers: { accept: "application/json", ...(BLOCKSCOUT_API_KEY ? { "X-API-KEY": BLOCKSCOUT_API_KEY } : {}) }});
+          const body = await r.text();
+          return new Response(body, { status: r.status, headers: { ...headers, "Content-Type": "application/json" }});
+        } else if (module === "account" && action === "tokentx") {
+          // Token transfers v1 API
+          const page = url.searchParams.get("page") ?? "1";
+          const offset = url.searchParams.get("offset") ?? "50";
+          const qs = new URLSearchParams({
+            module: "account", action: "tokentx",
+            address, page, offset, sort: "desc"
+          });
+          const target = `https://${host}/api?${qs.toString()}`;
+          const r = await fetch(target, { headers: { accept: "application/json", ...(BLOCKSCOUT_API_KEY ? { "X-API-KEY": BLOCKSCOUT_API_KEY } : {}) }});
+          const body = await r.text();
+          return new Response(body, { status: r.status, headers: { ...headers, "Content-Type": "application/json" }});
+        } else {
+          // Regular transactions v1 API
+          const page = url.searchParams.get("page") ?? "1";
+          const offset = url.searchParams.get("offset") ?? "50";
+          const qs = new URLSearchParams({
+            module: "account", action: "txlist",
+            address, page, offset, sort: "desc"
+          });
+          const target = `https://${host}/api?${qs.toString()}`;
+          const r = await fetch(target, { headers: { accept: "application/json", ...(BLOCKSCOUT_API_KEY ? { "X-API-KEY": BLOCKSCOUT_API_KEY } : {}) }});
+          const body = await r.text();
+          return new Response(body, { status: r.status, headers: { ...headers, "Content-Type": "application/json" }});
+        }
       } else {
-        // v2 REST: supports cursor params: block_number, index, items_count
-        const block_number = url.searchParams.get("block_number");
-        const index = url.searchParams.get("index");
-        const items_count = url.searchParams.get("items_count");
+        // v2 API - check if internal transactions
+        console.log("Module:", module, "Action:", action);
+        if (module === "internal-transactions") {
+          console.log("Using internal transactions v2 API");
+          // Internal transactions v2 API
+          const block_number = url.searchParams.get("block_number");
+          const index = url.searchParams.get("index");
+          const items_count = url.searchParams.get("items_count");
 
-        const qs = new URLSearchParams();
-        if (block_number) qs.set("block_number", block_number);
-        if (index) qs.set("index", index);
-        if (items_count) qs.set("items_count", items_count);
-        // NOTE: No page_size/limit in v2; first page defaults to ~50 items.
+          const qs = new URLSearchParams();
+          if (block_number) qs.set("block_number", block_number);
+          if (index) qs.set("index", index);
+          if (items_count) qs.set("items_count", items_count);
 
-        const query = qs.toString();
-        const target = `https://${host}/api/v2/addresses/${address}/transactions${query ? `?${query}` : ""}`;
+          const query = qs.toString();
+          const target = `https://${host}/api/v2/addresses/${address}/internal-transactions${query ? `?${query}` : ""}`;
+          console.log("Internal transactions target:", target);
+          
+          const r = await fetch(target, { headers: { accept: "application/json", ...(BLOCKSCOUT_API_KEY ? { "X-API-KEY": BLOCKSCOUT_API_KEY } : {}) }});
+          const body = await r.text();
+          return new Response(body, { status: r.status, headers: { ...headers, "Content-Type": "application/json" }});
+        } else {
+          // Regular transactions v2 API
+          const block_number = url.searchParams.get("block_number");
+          const index = url.searchParams.get("index");
+          const items_count = url.searchParams.get("items_count");
 
-        const r = await fetch(target, { headers: { accept: "application/json", ...(BLOCKSCOUT_API_KEY ? { "X-API-KEY": BLOCKSCOUT_API_KEY } : {}) }});
-        const body = await r.text();
-        return new Response(body, { status: r.status, headers: { ...headers, "Content-Type": "application/json" }});
+          const qs = new URLSearchParams();
+          if (block_number) qs.set("block_number", block_number);
+          if (index) qs.set("index", index);
+          if (items_count) qs.set("items_count", items_count);
+          // NOTE: No page_size/limit in v2; first page defaults to ~50 items.
+
+          const query = qs.toString();
+          const target = `https://${host}/api/v2/addresses/${address}/transactions${query ? `?${query}` : ""}`;
+
+          const r = await fetch(target, { headers: { accept: "application/json", ...(BLOCKSCOUT_API_KEY ? { "X-API-KEY": BLOCKSCOUT_API_KEY } : {}) }});
+          const body = await r.text();
+          return new Response(body, { status: r.status, headers: { ...headers, "Content-Type": "application/json" }});
+        }
       }
     }
 
