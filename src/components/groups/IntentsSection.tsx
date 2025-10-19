@@ -40,7 +40,8 @@ export function IntentsSection({
   onRefresh,
   onToggleShowAll
 }: IntentsSectionProps) {
-  const displayedIntents = showAllIntents ? userIntents : userIntents.slice(0, 3);
+  // Limit to maximum 10 intents to prevent browser freeze
+  const displayedIntents = showAllIntents ? allUserIntents.slice(0, 10) : userIntents.slice(0, 3);
 
   if (userIntents.length === 0 && !isLoadingIntents) {
     return null;
@@ -77,7 +78,7 @@ export function IntentsSection({
               ) : (
                 <>
                   <ChevronDown className="h-4 w-4 mr-1" />
-                  Show All ({allUserIntents.length})
+                  Show All ({Math.min(allUserIntents.length, 10)})
                 </>
               )}
             </Button>

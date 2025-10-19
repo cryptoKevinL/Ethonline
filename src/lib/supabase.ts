@@ -78,6 +78,7 @@ export interface Payment {
   intent_id: string // Intent ID from Nexus SDK (NOT NULL)
   first_tx_hash: string // First transaction hash (NOT NULL)
   deposit_solver_address?: string // Solver address from deposit transaction data
+  solver_address?: string // Standard solver address (0x247365...D96494)
   status: 'pending' | 'confirmed' | 'failed'
   created_at?: string
 }

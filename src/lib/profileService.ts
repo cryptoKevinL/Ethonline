@@ -1903,6 +1903,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
     intent_id: string;
     first_tx_hash: string;
     deposit_solver_address?: string;
+    solver_address?: string;
     status?: 'pending' | 'confirmed' | 'failed';
     period_start?: string;
     period_end?: string;
@@ -1924,6 +1925,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
           intent_id: paymentData.intent_id,
           first_tx_hash: paymentData.first_tx_hash,
           deposit_solver_address: paymentData.deposit_solver_address,
+          solver_address: paymentData.solver_address,
           status: paymentData.status || 'pending',
           period_start: paymentData.period_start,
           period_end: paymentData.period_end,
@@ -1947,6 +1949,9 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
   // Get payments for an employer
   static async getEmployerPayments(employerId: string, limit: number = 50) {
     try {
+      const timestamp = new Date().toISOString();
+      console.log('🔍 [', timestamp, '] Fetching payments for employer:', employerId, 'with limit:', limit);
+      
       const { data, error } = await supabase
         .from('payments')
         .select(`
@@ -1966,12 +1971,18 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
         `)
         .eq('employer_id', employerId)
         .order('created_at', { ascending: false })
-        .limit(limit);
+        .limit(limit)
+        .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
 
       if (error) {
+        console.error('❌ [', timestamp, '] Database error:', error);
         throw error;
       }
 
+      console.log('📊 [', timestamp, '] Raw database results:', data?.length, 'payments');
+      console.log('🎯 [', timestamp, '] Intent IDs from DB:', data?.map(p => p.intent_id));
+      console.log('⏰ [', timestamp, '] Created dates:', data?.map(p => p.created_at));
+      
       return { success: true, data };
     } catch (error) {
       console.error('Error fetching employer payments:', error);

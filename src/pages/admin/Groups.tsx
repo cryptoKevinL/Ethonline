@@ -49,6 +49,25 @@ const Groups = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<{ [key: string]: 'success' | 'error' | 'processing' }>({});
+  const [paymentProgress, setPaymentProgress] = useState<{
+    isVisible: boolean;
+    currentStep: string;
+    employeeName: string;
+    amount: string;
+    status: 'simulating' | 'signing' | 'confirming' | 'saving' | 'complete' | 'error';
+    signatureStep: number;
+    totalSignatures: number;
+    signatureDescription: string;
+  }>({
+    isVisible: false,
+    currentStep: '',
+    employeeName: '',
+    amount: '',
+    status: 'simulating',
+    signatureStep: 0,
+    totalSignatures: 0,
+    signatureDescription: ''
+  });
   const [userIntents, setUserIntents] = useState<any[]>([]);
   const [allUserIntents, setAllUserIntents] = useState<any[]>([]);
   const [isLoadingIntents, setIsLoadingIntents] = useState(false);
@@ -96,11 +115,36 @@ const Groups = () => {
 
   useEffect(() => {
     if (address) {
+      console.log('🚀 Page loaded, starting initial fetch...');
+      // Load intents from SDK (same as refresh button)
       fetchUserIntents(1);
-      // Also load existing payments from database as intents
-      loadDatabasePaymentsAsIntents();
+      
+      // Auto-refresh after page loads to get latest data
+      console.log('⏰ Setting auto-refresh timeout for 3 seconds...');
+      const autoRefreshTimeout = setTimeout(() => {
+        console.log('🔄 AUTO-REFRESH TRIGGERED - Getting latest data...');
+        fetchUserIntents(1);
+      }, 3000);
+      
+      return () => {
+        console.log('🧹 Cleaning up auto-refresh timeout');
+        clearTimeout(autoRefreshTimeout);
+      };
     }
   }, [address, groups]);
+
+  // Auto-refresh after Nexus SDK is initialized
+  useEffect(() => {
+    if (isInitialized && nexusSDK) {
+      console.log('🔄 Nexus SDK initialized, auto-refreshing payments...');
+      const refreshTimeout = setTimeout(() => {
+        console.log('🔄 AUTO-REFRESH AFTER SDK INIT - Getting latest data...');
+        fetchUserIntents(1);
+      }, 2000);
+      
+      return () => clearTimeout(refreshTimeout);
+    }
+  }, [isInitialized, nexusSDK]);
 
   const processGroupsWithWalletData = async (groups: any[]) => {
     const processedGroups: Group[] = [];
@@ -177,6 +221,18 @@ const Groups = () => {
     setIsProcessingPayment(paymentKey);
     setPaymentStatus(prev => ({ ...prev, [paymentKey]: 'processing' }));
 
+    // Show loading overlay
+    setPaymentProgress({
+      isVisible: true,
+      currentStep: 'Preparing payment...',
+      employeeName: `${employee.first_name} ${employee.last_name}`,
+      amount: `${employee.payment_amount} ${employee.token?.toUpperCase()}`,
+      status: 'simulating',
+      signatureStep: 0,
+      totalSignatures: 3, // Typically 3 signatures for cross-chain payments
+      signatureDescription: 'Preparing transaction simulation...'
+    });
+
     try {
       validateEmployeeData(employee);
 
@@ -195,6 +251,13 @@ const Groups = () => {
       console.log('Employee Data:', employee);
 
       // Run simulation first
+      setPaymentProgress(prev => ({ 
+        ...prev, 
+        currentStep: 'Simulating transaction...', 
+        status: 'simulating',
+        signatureStep: 1,
+        signatureDescription: 'Simulating cross-chain transfer parameters...'
+      }));
       try {
         console.log('=== RUNNING NEXUS SDK SIMULATION ===');
         const simulationResult = await nexusSDK.simulateTransfer(transferParams);
@@ -205,7 +268,49 @@ const Groups = () => {
         console.log('Continuing with payment despite simulation error...');
       }
 
+      // Update progress for signing - Signature 1: Token allowance
+      setPaymentProgress(prev => ({ 
+        ...prev, 
+        currentStep: 'Please sign the token allowance in your wallet...', 
+        status: 'signing',
+        signatureStep: 1,
+        signatureDescription: 'Signing token allowance to approve spending...'
+      }));
+
       const transferResult = await nexusSDK.transfer(transferParams);
+
+      // Update progress for confirmation - Signature 2: Deposit to solver
+      setPaymentProgress(prev => ({ 
+        ...prev, 
+        currentStep: 'Please sign the deposit to solver...', 
+        status: 'signing',
+        signatureStep: 2,
+        signatureDescription: 'Signing deposit transaction to send tokens to solver...'
+      }));
+
+      // Wait a moment to show the second signature step
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Update progress for final confirmation - Signature 3: Direct transfer to employee
+      setPaymentProgress(prev => ({ 
+        ...prev, 
+        currentStep: 'Please sign the direct transfer to employee...', 
+        status: 'signing',
+        signatureStep: 3,
+        signatureDescription: 'Signing direct transfer to employee on destination chain...'
+      }));
+
+      // Wait a moment to show the third signature step
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Update progress for confirmation
+      setPaymentProgress(prev => ({ 
+        ...prev, 
+        currentStep: 'Confirming all transactions...', 
+        status: 'confirming',
+        signatureStep: 3,
+        signatureDescription: 'All signatures complete, confirming on blockchain...'
+      }));
 
     // PRINT TRANSFER RESULT TO CONSOLE
     console.log('=== TRANSFER RESULT OBJECT ===');
@@ -224,6 +329,15 @@ const Groups = () => {
       if (transferResult.success) {
         setPaymentStatus(prev => ({ ...prev, [paymentKey]: 'success' }));
         
+        // Update progress for database saving
+        setPaymentProgress(prev => ({ 
+          ...prev, 
+          currentStep: 'Saving payment details...', 
+          status: 'saving',
+          signatureStep: 3,
+          signatureDescription: 'Saving payment record to database...'
+        }));
+
         try {
           let employmentId = employee.employment_id;
           if (!employmentId && group.employer?.id) {
@@ -298,6 +412,7 @@ const Groups = () => {
             intent_id: finalIntentId,
             first_tx_hash: firstTxHash,
             deposit_solver_address: depositSolverAddress,
+            solver_address: '0x247365225B96Cd8bc078F7263F6704f3EaD96494', // Standard solver address
             status: 'confirmed'
           });
 
@@ -308,6 +423,20 @@ const Groups = () => {
           console.error('Error saving payment to database:', dbError);
         }
         
+        // Update progress for completion
+        setPaymentProgress(prev => ({ 
+          ...prev, 
+          currentStep: 'Payment completed successfully!', 
+          status: 'complete',
+          signatureStep: 3,
+          signatureDescription: 'All signatures processed and payment complete!'
+        }));
+        
+        // Hide loading overlay after a short delay
+        setTimeout(() => {
+          setPaymentProgress(prev => ({ ...prev, isVisible: false }));
+        }, 2000);
+
         toast({
           title: "🎉 Payment Successful!",
           description: `Sent ${parseFloat(employee.payment_amount || '0').toFixed(2)} ${tokenType} to ${employee.first_name} ${employee.last_name}`,
@@ -323,6 +452,20 @@ const Groups = () => {
         console.error('Transfer failed:', transferResult);
         setPaymentStatus(prev => ({ ...prev, [paymentKey]: 'error' }));
         
+        // Update progress for error
+        setPaymentProgress(prev => ({ 
+          ...prev, 
+          currentStep: 'Payment failed', 
+          status: 'error',
+          signatureStep: 0,
+          signatureDescription: 'Payment failed during processing...'
+        }));
+        
+        // Hide loading overlay after a short delay
+        setTimeout(() => {
+          setPaymentProgress(prev => ({ ...prev, isVisible: false }));
+        }, 3000);
+        
         toast({
           title: "❌ Payment Failed",
           description: "Unknown error occurred during transfer",
@@ -335,6 +478,20 @@ const Groups = () => {
     } catch (error) {
       console.error('Error processing payment:', error);
       setPaymentStatus(prev => ({ ...prev, [paymentKey]: 'error' }));
+      
+      // Update progress for error
+      setPaymentProgress(prev => ({ 
+        ...prev, 
+        currentStep: 'Payment failed', 
+        status: 'error',
+        signatureStep: 0,
+        signatureDescription: 'An error occurred during payment processing...'
+      }));
+      
+      // Hide loading overlay after a short delay
+      setTimeout(() => {
+        setPaymentProgress(prev => ({ ...prev, isVisible: false }));
+      }, 3000);
       
       const errorMessage = error instanceof Error ? error.message : "Failed to process payment";
       
@@ -505,7 +662,8 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
       setUserIntents(allUserIntents.slice(0, 3));
       setShowAllIntents(false);
     } else {
-      setUserIntents(allUserIntents);
+      // Limit to 10 intents to prevent browser freeze
+      setUserIntents(allUserIntents.slice(0, 10));
       setShowAllIntents(true);
     }
   };
@@ -605,7 +763,7 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
               if (typeof tx === 'object' && tx.from && tx.from.toLowerCase() === address.toLowerCase()) {
                      console.log('Found outgoing transaction hash:', tx.hash, 'in block', blockNumberToCheck);
                      // Extract just the hash string from the 'to' field
-                     const solverAddress = typeof tx.to === 'string' ? tx.to : tx.to?.hash || '';
+                     const solverAddress = typeof tx.to === 'string' ? tx.to : (tx.to as { hash?: string })?.hash || '';
                      console.log('Solver address (transaction destination):', solverAddress);
                      return { hash: tx.hash, solverAddress };
               }
@@ -630,44 +788,56 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
 
     try {
       if (groups.length > 0 && groups[0].employer?.id) {
-        const paymentsResult = await ProfileService.getEmployerPayments(groups[0].employer.id, 20);
+        console.log('🔄 Loading database payments as intents at:', new Date().toISOString());
+        const paymentsResult = await ProfileService.getEmployerPayments(groups[0].employer.id, 10);
         
         if (paymentsResult.success && paymentsResult.data) {
           console.log('Loading database payments as intents:', paymentsResult.data);
+          console.log('Number of payments returned:', paymentsResult.data.length);
+          console.log('Intent IDs in order:', paymentsResult.data.map(p => p.intent_id));
           
           // Convert database payments to intent format
-          const databaseIntents = paymentsResult.data.map((payment: any) => ({
-            intentId: payment.intent_id,
-            sourceAmount: payment.amount_token,
-            sourceCurrency: payment.token?.toUpperCase() || 'ETH',
-            destAmount: payment.amount_token, // Assuming same amount for now
-            destCurrency: payment.token?.toUpperCase() || 'ETH',
-            sourceChain: payment.chain,
-            destChain: payment.chain, // Assuming same chain for now
-            status: payment.status === 'confirmed' ? 'SUCCESS' : 'PENDING',
-            timestamp: new Date(payment.created_at).getTime() / 1000,
-            sender: address,
-            recipient: payment.recipient,
-            solver: payment.deposit_solver_address || '0x247365225B96Cd8bc078F7263F6704f3EaD96494',
-            totalFees: '0.0001', // Default fee
-            senderToSolverHash: payment.first_tx_hash,
-            solverToReceiverHash: payment.tx_hash,
-            hasRealData: true,
-            sourceChainId: 11155111, // Default to Sepolia
-            destinationChainId: 11155111
-          }));
+          const databaseIntents = paymentsResult.data.map((payment: any) => {
+            const destinationChainId = getChainId(payment.chain);
+            console.log(`Payment chain: ${payment.chain}, mapped to chain ID: ${destinationChainId}`);
+            
+            return {
+              intentId: payment.intent_id,
+              sourceAmount: payment.amount_token,
+              sourceCurrency: payment.token?.toUpperCase() || 'ETH',
+              destAmount: payment.amount_token, // Assuming same amount for now
+              destCurrency: payment.token?.toUpperCase() || 'ETH',
+              sourceChain: payment.chain,
+              destChain: payment.chain, // Assuming same chain for now
+              status: payment.status === 'confirmed' ? 'SUCCESS' : 'PENDING',
+              timestamp: new Date(payment.created_at).getTime() / 1000,
+              sender: address,
+              recipient: payment.recipient,
+              solver: payment.solver_address || '0x247365225B96Cd8bc078F7263F6704f3EaD96494', // Use stored solver or fallback
+              totalFees: '0.0001', // Default fee
+              senderToSolverHash: payment.first_tx_hash,
+              solverToReceiverHash: payment.tx_hash,
+              hasRealData: true,
+              sourceChainId: 11155111, // Source is always Sepolia (deposit chain)
+              destinationChainId: destinationChainId // Destination based on payment chain
+            };
+          });
 
           // Merge with existing intents (avoid duplicates)
           setUserIntents(prevIntents => {
             const existingIds = new Set(prevIntents.map(intent => intent.intentId));
             const newIntents = databaseIntents.filter(intent => !existingIds.has(intent.intentId));
-            return [...newIntents, ...prevIntents].slice(0, 3);
+            const result = [...newIntents, ...prevIntents].slice(0, 3);
+            console.log('Setting userIntents to:', result.length, 'intents');
+            return result;
           });
 
           setAllUserIntents(prevIntents => {
             const existingIds = new Set(prevIntents.map(intent => intent.intentId));
             const newIntents = databaseIntents.filter(intent => !existingIds.has(intent.intentId));
-            return [...newIntents, ...prevIntents];
+            const result = [...newIntents, ...prevIntents];
+            console.log('Setting allUserIntents to:', result.length, 'intents');
+            return result;
           });
 
           console.log('✅ Database payments loaded as intents');
@@ -783,6 +953,153 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
           )}
         </motion.div>
       </div>
+
+      {/* Payment Progress Overlay */}
+      {paymentProgress.isVisible && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="text-center">
+              {/* Spinner */}
+              <div className="w-16 h-16 mx-auto mb-4 relative">
+                <div className="absolute inset-0 border-4 border-blue-200 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+              </div>
+              
+              {/* Status Icon */}
+              <div className="mb-4">
+                {paymentProgress.status === 'simulating' && (
+                  <div className="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full animate-pulse"></div>
+                  </div>
+                )}
+                {paymentProgress.status === 'signing' && (
+                  <div className="w-12 h-12 mx-auto bg-yellow-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-yellow-500 rounded-full animate-bounce"></div>
+                  </div>
+                )}
+                {paymentProgress.status === 'confirming' && (
+                  <div className="w-12 h-12 mx-auto bg-orange-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-orange-500 rounded-full animate-pulse"></div>
+                  </div>
+                )}
+                {paymentProgress.status === 'saving' && (
+                  <div className="w-12 h-12 mx-auto bg-purple-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-purple-500 rounded-full animate-pulse"></div>
+                  </div>
+                )}
+                {paymentProgress.status === 'complete' && (
+                  <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-green-500 rounded-full">✓</div>
+                  </div>
+                )}
+                {paymentProgress.status === 'error' && (
+                  <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center">
+                    <div className="w-6 h-6 bg-red-500 rounded-full">✗</div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Progress Text */}
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {paymentProgress.status === 'complete' ? 'Payment Complete!' : 
+                 paymentProgress.status === 'error' ? 'Payment Failed' : 
+                 'Processing Payment...'}
+              </h3>
+              
+              <p className="text-sm text-gray-600 mb-4">
+                {paymentProgress.currentStep}
+              </p>
+              
+              {/* Employee Info */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Employee:</span> {paymentProgress.employeeName}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Amount:</span> {paymentProgress.amount}
+                </p>
+              </div>
+
+              {/* Signature Progress */}
+              {paymentProgress.totalSignatures > 0 && (
+                <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-blue-900">Signature Progress</span>
+                    <span className="text-sm text-blue-700">
+                      {paymentProgress.signatureStep} of {paymentProgress.totalSignatures}
+                    </span>
+                  </div>
+                  
+                  {/* Signature Steps */}
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((step) => (
+                      <div key={step} className="flex items-center space-x-3">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                          step <= paymentProgress.signatureStep 
+                            ? 'bg-green-500 text-white' 
+                            : step === paymentProgress.signatureStep + 1 && paymentProgress.status === 'signing'
+                            ? 'bg-yellow-500 text-white animate-pulse'
+                            : 'bg-gray-200 text-gray-500'
+                        }`}>
+                          {step <= paymentProgress.signatureStep ? '✓' : step}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`text-xs ${
+                            step <= paymentProgress.signatureStep 
+                              ? 'text-green-700 font-medium' 
+                              : step === paymentProgress.signatureStep + 1 && paymentProgress.status === 'signing'
+                              ? 'text-yellow-700 font-medium'
+                              : 'text-gray-500'
+                          }`}>
+                            {step === 1 && 'Token Allowance'}
+                            {step === 2 && 'Deposit to Solver'}
+                            {step === 3 && 'Direct Transfer to Employee'}
+                          </p>
+                          {step === paymentProgress.signatureStep && paymentProgress.status === 'signing' && (
+                            <p className="text-xs text-yellow-600 mt-1">
+                              {paymentProgress.signatureDescription}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Progress Bar */}
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-500 ${
+                    paymentProgress.status === 'complete' ? 'bg-green-500 w-full' :
+                    paymentProgress.status === 'error' ? 'bg-red-500 w-full' :
+                    paymentProgress.status === 'signing' ? 
+                      `bg-yellow-500 w-${Math.round((paymentProgress.signatureStep / paymentProgress.totalSignatures) * 100)}` :
+                    paymentProgress.status === 'confirming' ? 'bg-orange-500 w-90' :
+                    paymentProgress.status === 'saving' ? 'bg-purple-500 w-95' :
+                    'bg-blue-500 w-25'
+                  }`}
+                  style={{
+                    width: paymentProgress.status === 'signing' 
+                      ? `${Math.round((paymentProgress.signatureStep / paymentProgress.totalSignatures) * 100)}%`
+                      : undefined
+                  }}
+                ></div>
+              </div>
+              
+              {/* Status Message */}
+              <p className="text-xs text-gray-500">
+                {paymentProgress.status === 'signing' && `Signature ${paymentProgress.signatureStep}: ${paymentProgress.signatureDescription}`}
+                {paymentProgress.status === 'confirming' && 'All signatures complete, waiting for blockchain confirmation...'}
+                {paymentProgress.status === 'saving' && 'Saving payment details to database...'}
+                {paymentProgress.status === 'complete' && 'Payment has been successfully processed!'}
+                {paymentProgress.status === 'error' && 'An error occurred during payment processing'}
+                {paymentProgress.status === 'simulating' && 'Preparing cross-chain transaction...'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

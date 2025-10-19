@@ -112,90 +112,27 @@ export function IntentCard({ intent, index }: IntentCardProps) {
           </div>
         </div>
 
-        {/* Simplified Payment Flow */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200/50">
-          <div className="flex items-center justify-between">
-            {/* Sender */}
-            <div className="flex flex-col items-center space-y-2">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">S</span>
-                </div>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-1">Sender</p>
-                <p className="font-mono text-xs bg-white/50 px-2 py-1 rounded">
-                  {intent.sender?.slice(0, 6)}...{intent.sender?.slice(-4)}
-                </p>
-              </div>
-            </div>
-
-            {/* Arrow */}
-            <div className="flex flex-col items-center space-y-2">
-              <ArrowRight className="h-5 w-5 text-blue-500" />
-              <div className="text-xs text-muted-foreground text-center">
-                <p className="font-semibold">{intent.sourceAmount} {intent.sourceCurrency}</p>
-                <p className="text-xs">{intent.sourceChain}</p>
-              </div>
-            </div>
-
-            {/* Avail */}
-            <div className="flex flex-col items-center space-y-2">
-              <div className="p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">A</span>
-                </div>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-1">Avail</p>
-                <p className="text-xs font-semibold text-purple-600">Holds Funds</p>
-              </div>
-            </div>
-
-            {/* Arrow */}
-            <div className="flex flex-col items-center space-y-2">
-              <ArrowRight className="h-5 w-5 text-green-500" />
-              <div className="text-xs text-muted-foreground text-center">
-                <p className="font-semibold">{intent.destAmount} {intent.destCurrency}</p>
-                <p className="text-xs">{intent.destChain}</p>
-              </div>
-            </div>
-
-            {/* Recipient */}
-            <div className="flex flex-col items-center space-y-2">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">R</span>
-                </div>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-1">Recipient</p>
-                <p className="font-mono text-xs bg-white/50 px-2 py-1 rounded">
-                  {(paymentData?.recipient || intent.recipient)?.slice(0, 6)}...{(paymentData?.recipient || intent.recipient)?.slice(-4)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Complete Payment Flow */}
         <div className="space-y-4">
           {/* Flow Header */}
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Step 1: Deposit to Solver</span>
+            <span>Step 1: Employer → Solver</span>
             <ArrowRight className="h-4 w-4" />
-            <span>Step 2: Final Transfer</span>
+            <span>Step 2: Solver → Employer</span>
+            <ArrowRight className="h-4 w-4" />
+            <span>Step 3: Employer → Employee</span>
           </div>
 
-          {/* Two-Step Flow */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Step 1: Sender → Solver (Deposit) */}
+          {/* Three-Step Flow */}
+          <div className="grid md:grid-cols-3 gap-4">
+            {/* Step 1: Employer → Solver */}
             <div className="flex flex-col">
               <div className="p-4 bg-blue-50/50 rounded-lg border border-blue-200/50 h-full">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-blue-800">Step 1: Create An Intent</h4>
+                  <h4 className="font-semibold text-blue-800">Step 1: Employer → Solver</h4>
                   <Badge variant="outline" className="bg-blue-100 text-blue-700">
-                    Funds Locked
+                    Deposit
                   </Badge>
                 </div>
                 <div className="space-y-3 text-sm">
@@ -268,7 +205,7 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                   )}
                   <div className="bg-blue-100/50 p-2 rounded text-xs">
                     <p className="text-blue-800 font-medium">Solver Action:</p>
-                    <p className="text-blue-700">Receives {intent.sourceCurrency} on {intent.sourceChain}</p>
+                    <p className="text-blue-700">Receives {intent.sourceCurrency} from employer on {intent.sourceChain}</p>
                   </div>
                   {(paymentData?.first_tx_hash || intent.senderToSolverHash) && (
                     <div className="pt-2 border-t border-blue-200/50">
@@ -313,13 +250,13 @@ export function IntentCard({ intent, index }: IntentCardProps) {
               </div>
             </div>
 
-            {/* Step 2: Solver → Receiver (Final Transfer) */}
+            {/* Step 2: Solver → Employer */}
             <div className="flex flex-col">
-              <div className="p-4 bg-green-50/50 rounded-lg border border-green-200/50 h-full">
+              <div className="p-4 bg-yellow-50/50 rounded-lg border border-yellow-200/50 h-full">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-green-800">Step 2: Final Transfer</h4>
-                  <Badge variant="outline" className="bg-green-100 text-green-700">
-                    {intent.status === 'SUCCESS' ? 'Completed' : 'Processing'}
+                  <h4 className="font-semibold text-yellow-800">Step 2: Solver → Employer</h4>
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-700">
+                    Cross-chain
                   </Badge>
                 </div>
                 <div className="space-y-3 text-sm">
@@ -335,7 +272,7 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                             variant="ghost"
                             size="icon"
                             className="h-4 w-4"
-                            onClick={() => copyToClipboard(paymentData?.deposit_solver_address || intent.solver, "Solver address")}
+                            onClick={() => copyToClipboard(intent.solver, "Solver address")}
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
@@ -356,31 +293,17 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                       )}
                     </div>
                     <div>
-                      <span className="text-muted-foreground">To Receiver:</span>
-                      {paymentData?.recipient ? (
+                      <span className="text-muted-foreground">To Employer:</span>
+                      {intent.sender ? (
                         <div className="flex items-center gap-1">
                           <p className="font-mono text-xs break-all">
-                            {paymentData.recipient.slice(0, 8)}...{paymentData.recipient.slice(-6)}
+                            {intent.sender.slice(0, 8)}...{intent.sender.slice(-6)}
                           </p>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-4 w-4"
-                            onClick={() => copyToClipboard(paymentData.recipient, "Receiver address")}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ) : intent.recipient ? (
-                        <div className="flex items-center gap-1">
-                          <p className="font-mono text-xs break-all">
-                            {intent.recipient.slice(0, 8)}...{intent.recipient.slice(-6)}
-                          </p>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-4 w-4"
-                            onClick={() => copyToClipboard(intent.recipient, "Receiver address")}
+                            onClick={() => copyToClipboard(intent.sender, "Employer address")}
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
@@ -406,14 +329,134 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                       <span>{intent.destChain}</span>
                     </div>
                   )}
+                  <div className="bg-yellow-100/50 p-2 rounded text-xs">
+                    <p className="text-yellow-800 font-medium">Solver Action:</p>
+                    <p className="text-yellow-700">Sends {intent.destCurrency} back to employer on {intent.destChain}</p>
+                  </div>
+                  {(paymentData?.tx_hash || intent.solverToReceiverHash) && (
+                    <div className="pt-2 border-t border-yellow-200/50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-xs">Transfer TX:</span>
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => window.open(
+                            getBlockscoutUrl(intent.destinationChainId, undefined, paymentData?.tx_hash || intent.solverToReceiverHash), 
+                            '_blank'
+                          )}
+                        >
+                          View TX
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <p className="font-mono text-xs break-all">
+                          {(paymentData?.tx_hash || intent.solverToReceiverHash).slice(0, 10)}...{(paymentData?.tx_hash || intent.solverToReceiverHash).slice(-8)}
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4"
+                          onClick={() => copyToClipboard(paymentData?.tx_hash || intent.solverToReceiverHash, "Transaction hash")}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Employer → Employee */}
+            <div className="flex flex-col">
+              <div className="p-4 bg-green-50/50 rounded-lg border border-green-200/50 h-full">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-green-800">Step 3: Employer → Employee</h4>
+                  <Badge variant="outline" className="bg-green-100 text-green-700">
+                    {intent.status === 'SUCCESS' ? 'Completed' : 'Processing'}
+                  </Badge>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-muted-foreground">From Employer:</span>
+                      {intent.sender ? (
+                        <div className="flex items-center gap-1">
+                          <p className="font-mono text-xs break-all">
+                            {intent.sender.slice(0, 8)}...{intent.sender.slice(-6)}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4"
+                            onClick={() => copyToClipboard(intent.sender, "Employer address")}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Not available</p>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">To Employee:</span>
+                      {paymentData?.recipient ? (
+                        <div className="flex items-center gap-1">
+                          <p className="font-mono text-xs break-all">
+                            {paymentData.recipient.slice(0, 8)}...{paymentData.recipient.slice(-6)}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4"
+                            onClick={() => copyToClipboard(paymentData.recipient, "Employee address")}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : intent.recipient ? (
+                        <div className="flex items-center gap-1">
+                          <p className="font-mono text-xs break-all">
+                            {intent.recipient.slice(0, 8)}...{intent.recipient.slice(-6)}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4"
+                            onClick={() => copyToClipboard(intent.recipient, "Employee address")}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          {isLoadingPaymentData ? "Loading..." : "Not available"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {intent.destAmount && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Amount Sent:</span>
+                      <span className="font-semibold text-green-700">
+                        {intent.destAmount} {intent.destCurrency}
+                      </span>
+                    </div>
+                  )}
+                  {intent.destChain && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Destination Chain:</span>
+                      <span>{intent.destChain}</span>
+                    </div>
+                  )}
                   <div className="bg-green-100/50 p-2 rounded text-xs">
-                    <p className="text-green-800 font-medium">Solver Action:</p>
-                    <p className="text-green-700">Provides {intent.destCurrency} on {intent.destChain} to Sender and sends to receiver</p>
+                    <p className="text-green-800 font-medium">Employer Action:</p>
+                    <p className="text-green-700">Sends {intent.destCurrency} directly to employee on {intent.destChain}</p>
                   </div>
                   {(paymentData?.tx_hash || intent.solverToReceiverHash) && (
                     <div className="pt-2 border-t border-green-200/50">
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-xs">Transfer TX:</span>
+                        <span className="text-muted-foreground text-xs">Final TX:</span>
                         <Button
                           variant="link"
                           className="h-auto p-0 text-xs"
