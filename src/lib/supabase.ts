@@ -75,9 +75,11 @@ export interface Payment {
   pay_date: string // Date, defaults to CURRENT_DATE
   recipient: string // Employee wallet address
   tx_hash?: string // Transaction hash
+  intent_id: string // Intent ID from Nexus SDK (NOT NULL)
+  first_tx_hash: string // First transaction hash (NOT NULL)
+  deposit_solver_address?: string // Solver address from deposit transaction data
   status: 'pending' | 'confirmed' | 'failed'
-  created_at: string
-  updated_at: string
+  created_at?: string
 }
 
 export interface EmployeeProfileData {

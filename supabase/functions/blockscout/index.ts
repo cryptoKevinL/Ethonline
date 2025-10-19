@@ -14,6 +14,11 @@ const CHAIN_TO_HOST: Record<string, string> = {
   "base-sepolia": "base-sepolia.blockscout.com",
   "84532": "base-sepolia.blockscout.com",
 
+  // Ethereum Sepolia
+  "ethereum-sepolia": "eth-sepolia.blockscout.com",
+  "eth-sepolia": "eth-sepolia.blockscout.com",
+  "11155111": "eth-sepolia.blockscout.com",
+
   // Optimism Sepolia
   "optimism-sepolia": "optimism-sepolia.blockscout.com",
   "11155420": "optimism-sepolia.blockscout.com",
@@ -51,6 +56,11 @@ serve(async (req: Request) => {
 
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
 
+  // Log request for debugging
+  console.log("Request method:", req.method);
+  console.log("Request URL:", req.url);
+  console.log("Request headers:", Object.fromEntries(req.headers.entries()));
+
   try {
     const url = new URL(req.url);
     const api = (url.searchParams.get("api") || "v2").toLowerCase(); // 'v2' | 'v1'
@@ -60,11 +70,15 @@ serve(async (req: Request) => {
     let host: string | null = sanitizeHost(hostParam);
     if (!host && chain) host = CHAIN_TO_HOST[chain] ?? null;
     if (!host) {
+      console.log("No host found for chain:", chain);
       return new Response(JSON.stringify({
         error: "Unknown or disallowed host/chain. Provide ?chain=<name|chainId> or ?host=<allowed-host>.",
         allowedChains: Object.keys(CHAIN_TO_HOST),
+        providedChain: chain,
       }), { status: 400, headers: { ...headers, "Content-Type": "application/json" }});
     }
+
+    console.log("Using host:", host);
 
     // MODE 1: TX by hash
     const hash = url.searchParams.get("hash");
@@ -84,6 +98,7 @@ serve(async (req: Request) => {
     // MODE 2: Address txs (v2 uses cursor-based pagination; no limit/page_size)
     const address = url.searchParams.get("address");
     if (address) {
+      console.log("Fetching transactions for address:", address);
       if (api === "v1") {
         // etherscan-compatible (allows offset):
         const page = url.searchParams.get("page") ?? "1";

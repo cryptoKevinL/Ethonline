@@ -1512,38 +1512,117 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
     }
   }
 
-  // Get real-time transaction monitoring setup
+  // Send email notification for new payment
+  static async sendPaymentNotification(employeeEmail: string, paymentData: any) {
+    try {
+      // This would integrate with your email service (SendGrid, AWS SES, etc.)
+      // For now, we'll just log the notification
+      console.log('📧 Email notification would be sent to:', employeeEmail);
+      console.log('📧 Payment details:', {
+        amount: paymentData.valueFormatted,
+        chain: paymentData.chain,
+        txHash: paymentData.hash,
+        intentId: paymentData.intentId
+      });
+      
+      // TODO: Implement actual email sending
+      // Example with SendGrid:
+      // await sgMail.send({
+      //   to: employeeEmail,
+      //   from: 'noreply@yourcompany.com',
+      //   subject: '💰 New Payment Received!',
+      //   html: `
+      //     <h2>Payment Received!</h2>
+      //     <p>You have received a new payment of ${paymentData.valueFormatted}</p>
+      //     <p>Chain: ${paymentData.chain}</p>
+      //     <p>Transaction: ${paymentData.hash}</p>
+      //   `
+      // });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error sending payment notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Get real-time transaction monitoring setup - uses Supabase real-time subscriptions
   static setupTransactionMonitoring(employeeWallet: string, employerAddress: string, onNewTransaction: (tx: any) => void) {
     try {
-      // For demo purposes, we'll use a polling approach instead of WebSocket
-      // In production, you'd use WebSocket: wss://eth.blockscout.com/api/v2/websocket
+      console.log('🔔 Setting up real-time payment monitoring via Supabase...');
+      console.log('📧 Monitoring for employee wallet:', employeeWallet);
       
-      const pollInterval = 30000; // Poll every 30 seconds
-      
-      const pollForNewTransactions = async () => {
-        try {
-          const result = await this.getPaymentTransactions(employeeWallet, employerAddress, 5);
-          if (result.success && result.data.length > 0) {
-            // Check if any transactions are newer than our last check
-            result.data.forEach(tx => {
-              const txTime = new Date(tx.timestamp).getTime();
-              const now = Date.now();
-              // If transaction is less than 1 minute old, consider it "new"
-              if (now - txTime < 60000) {
-                onNewTransaction(tx);
+      // Subscribe to new payments in the database for this employee
+      const subscription = supabase
+        .channel(`payment-notifications-${employeeWallet}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'payments',
+            filter: `recipient=eq.${employeeWallet}`
+          },
+          async (payload) => {
+            console.log('💰 New payment detected in database:', payload.new);
+            
+            const payment = payload.new;
+            
+            // Get employee email for notifications
+            try {
+              const { data: employeeData } = await supabase
+                .from('employees')
+                .select('email')
+                .eq('id', payment.employee_id)
+                .single();
+              
+              if (employeeData?.email) {
+                // Send email notification
+                await this.sendPaymentNotification(employeeData.email, {
+                  valueFormatted: `${payment.amount_token} ${payment.token?.toUpperCase()}`,
+                  chain: payment.chain,
+                  hash: payment.tx_hash,
+                  intentId: payment.intent_id
+                });
               }
-            });
+            } catch (error) {
+              console.log('Could not send email notification:', error);
+            }
+            
+            // Format the payment data for notification
+            const formattedPayment = {
+              id: payment.id,
+              hash: payment.tx_hash,
+              from: 'Employer', // We could get the actual employer name from the employment data
+              to: payment.recipient,
+              value: payment.amount_token,
+              valueFormatted: `${payment.amount_token} ${payment.token?.toUpperCase()}`,
+              timestamp: payment.created_at,
+              chain: payment.chain,
+              status: payment.status,
+              intentId: payment.intent_id,
+              depositSolver: payment.deposit_solver_address,
+              depositTx: payment.first_tx_hash
+            };
+            
+            // Trigger the notification callback
+            onNewTransaction(formattedPayment);
           }
-        } catch (error) {
-          console.error('Error polling for transactions:', error);
-        }
-      };
+        )
+        .subscribe((status) => {
+          console.log('📡 Subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Successfully subscribed to payment notifications');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ Failed to subscribe to payment notifications - real-time may not be enabled');
+          }
+        });
 
-      // Start polling
-      const intervalId = setInterval(pollForNewTransactions, pollInterval);
-      
       // Return cleanup function
-      return () => clearInterval(intervalId);
+      return () => {
+        console.log('🔕 Stopping payment monitoring...');
+        subscription.unsubscribe();
+      };
     } catch (error) {
       console.error('Error setting up transaction monitoring:', error);
       return () => {}; // Return empty cleanup function
@@ -1821,6 +1900,9 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
     amount_token: string;
     recipient: string;
     tx_hash?: string;
+    intent_id: string;
+    first_tx_hash: string;
+    deposit_solver_address?: string;
     status?: 'pending' | 'confirmed' | 'failed';
     period_start?: string;
     period_end?: string;
@@ -1839,6 +1921,9 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
           amount_token: paymentData.amount_token,
           recipient: paymentData.recipient,
           tx_hash: paymentData.tx_hash,
+          intent_id: paymentData.intent_id,
+          first_tx_hash: paymentData.first_tx_hash,
+          deposit_solver_address: paymentData.deposit_solver_address,
           status: paymentData.status || 'pending',
           period_start: paymentData.period_start,
           period_end: paymentData.period_end,
@@ -1848,6 +1933,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
         .single();
 
       if (error) {
+        console.error('Supabase error saving payment:', error);
         throw error;
       }
 
@@ -1970,6 +2056,40 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
       return { success: true, data: data?.id || null };
     } catch (error) {
       console.error('Error finding employment_id:', error);
+      return { success: false, error: error.message, data: null };
+    }
+  }
+
+  // Get payment by intent ID
+  static async getPaymentByIntentId(intentId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select(`
+          *,
+          employments!inner(
+            id,
+            role,
+            payment_amount,
+            payment_frequency,
+            employees!inner(
+              id,
+              first_name,
+              last_name,
+              email
+            )
+          )
+        `)
+        .eq('intent_id', intentId)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error fetching payment by intent ID:', error);
       return { success: false, error: error.message, data: null };
     }
   }

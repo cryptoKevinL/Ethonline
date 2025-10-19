@@ -48,13 +48,8 @@ const Employment = () => {
   const { toast } = useToast();
   const [employmentData, setEmploymentData] = useState<EmploymentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [paymentTransactions, setPaymentTransactions] = useState<Transaction[]>([]);
-  const [employerTransactions, setEmployerTransactions] = useState<Transaction[]>([]);
-  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [monitoringCleanup, setMonitoringCleanup] = useState<(() => void) | null>(null);
-  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
-  const [isLoadingRecentTransactions, setIsLoadingRecentTransactions] = useState(false);
   const [databasePayments, setDatabasePayments] = useState<any[]>([]);
   const [isLoadingDatabasePayments, setIsLoadingDatabasePayments] = useState(false);
 
@@ -98,67 +93,9 @@ const Employment = () => {
     loadEmploymentData();
   }, [address, isConnected, toast]);
 
-  // Fetch recent transactions when address is available
-  useEffect(() => {
-    if (address && isConnected) {
-      fetchRecentTransactions();
-    }
-  }, [address, isConnected]);
+  // No longer needed - we use real-time database monitoring instead
 
-  // Load transaction data
-  const loadTransactionData = async () => {
-    if (!address || !isConnected) return;
 
-    setIsLoadingTransactions(true);
-    try {
-      // Load payment transactions (incoming to employee)
-      const paymentResult = await ProfileService.getPaymentTransactions(address, TEST_EMPLOYER_ADDRESS, 10);
-      if (paymentResult.success) {
-        setPaymentTransactions(paymentResult.data);
-        console.log('Loaded payment transactions:', paymentResult.data);
-      }
-
-      // Load employer transactions (outgoing from employer)
-      const employerResult = await ProfileService.getEmployerTransactions(TEST_EMPLOYER_ADDRESS, 20);
-      if (employerResult.success) {
-        setEmployerTransactions(employerResult.data);
-        console.log('Loaded employer transactions:', employerResult.data);
-      }
-    } catch (error) {
-      console.error('Error loading transaction data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load transaction data. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingTransactions(false);
-    }
-  };
-
-  // Fetch recent transactions for the employee
-  const fetchRecentTransactions = async () => {
-    if (!address) return;
-
-    setIsLoadingRecentTransactions(true);
-    try {
-      const response = await fetch(`https://memgpowzdqeuwdpueajh.functions.supabase.co/blockscout?chain=optimism-sepolia&address=${address}&api=v2`);
-      if (response.ok) {
-        const txData = await response.json();
-        console.log('Recent transactions for employee:', txData);
-        
-        // Get the last 5 transactions
-        const transactions = txData.items || txData.result || [];
-        const lastFiveTransactions = transactions.slice(0, 5);
-        console.log('Last 5 transactions:', lastFiveTransactions);
-        setRecentTransactions(lastFiveTransactions);
-      }
-    } catch (error) {
-      console.log('Error fetching recent transactions:', error);
-    } finally {
-      setIsLoadingRecentTransactions(false);
-    }
-  };
 
   const fetchDatabasePayments = async () => {
     if (!employmentData?.employee?.id) return;
@@ -182,51 +119,34 @@ const Employment = () => {
     }
   };
 
-  // Start/stop transaction monitoring
-  const toggleMonitoring = () => {
-    if (isMonitoring) {
-      // Stop monitoring
-      if (monitoringCleanup) {
-        monitoringCleanup();
-        setMonitoringCleanup(null);
-      }
-      setIsMonitoring(false);
-      toast({
-        title: "Monitoring Stopped",
-        description: "Real-time transaction monitoring has been stopped.",
-      });
-    } else {
-      // Start monitoring
-      if (address && isConnected) {
-        const cleanup = ProfileService.setupTransactionMonitoring(
-          address,
-          TEST_EMPLOYER_ADDRESS,
-          (newTransaction) => {
-            toast({
-              title: "New Payment Received!",
-              description: `Received ${newTransaction.valueFormatted} ETH from your employer.`,
-            });
-            // Refresh transaction data
-            loadTransactionData();
-          }
-        );
-        setMonitoringCleanup(() => cleanup);
-        setIsMonitoring(true);
-        toast({
-          title: "Monitoring Started",
-          description: "Real-time transaction monitoring is now active.",
-        });
-      }
-    }
-  };
 
-  // Load transactions when employment data is loaded
+  // Load payments and start monitoring when employment data is loaded
   useEffect(() => {
     if (employmentData) {
-      loadTransactionData();
       fetchDatabasePayments();
+      
+      // Automatically start monitoring for new payments
+      if (address && isConnected) {
+        console.log('🔔 Auto-starting payment monitoring...');
+        const cleanup = ProfileService.setupTransactionMonitoring(
+          address,
+          employmentData.companyEmail, // Using company email as identifier
+          (newTransaction) => {
+            toast({
+              title: "💰 New Payment Received!",
+              description: `Received ${newTransaction.valueFormatted} from your employer.`,
+            });
+            // Refresh payment data
+            fetchDatabasePayments();
+          }
+        );
+        
+        // Store cleanup function
+        setMonitoringCleanup(() => cleanup);
+        setIsMonitoring(true);
+      }
     }
-  }, [employmentData]);
+  }, [employmentData, address, isConnected, toast]);
 
   // Cleanup monitoring on unmount
   useEffect(() => {
@@ -398,15 +318,12 @@ const Employment = () => {
                     </>
                   )}
                 </Button>
-                <Button
-                  onClick={toggleMonitoring}
-                  variant={isMonitoring ? "destructive" : "default"}
-                  size="sm"
-                  className={isMonitoring ? "bg-red-500 hover:bg-red-600" : "bg-gradient-to-r from-primary to-blue-500 hover:opacity-90"}
-                >
-                  <Bell className="h-4 w-4 mr-1" />
-                  {isMonitoring ? "Stop Monitoring" : "Start Monitoring"}
-                </Button>
+                {isMonitoring && (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-700 rounded-md text-sm">
+                    <Bell className="h-4 w-4" />
+                    Live Monitoring Active
+                  </div>
+                )}
               </div>
             </div>
             
@@ -470,6 +387,12 @@ const Employment = () => {
                             <span className="text-muted-foreground">Recipient:</span>
                             <span className="font-mono text-xs">{payment.recipient?.slice(0, 6)}...{payment.recipient?.slice(-4)}</span>
                           </div>
+                          {payment.intent_id && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Intent ID:</span>
+                              <span className="font-mono text-xs">{payment.intent_id}</span>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="space-y-2 text-sm">
@@ -481,9 +404,21 @@ const Employment = () => {
                             <span className="text-muted-foreground">Pay Date:</span>
                             <span>{new Date(payment.pay_date).toLocaleDateString()}</span>
                           </div>
+                          {payment.deposit_solver_address && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Deposit Solver:</span>
+                              <span className="font-mono text-xs">{payment.deposit_solver_address.slice(0, 6)}...{payment.deposit_solver_address.slice(-4)}</span>
+                            </div>
+                          )}
+                          {payment.first_tx_hash && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Deposit TX:</span>
+                              <span className="font-mono text-xs">{payment.first_tx_hash.slice(0, 6)}...{payment.first_tx_hash.slice(-4)}</span>
+                            </div>
+                          )}
                           {payment.tx_hash && (
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">TX Hash:</span>
+                              <span className="text-muted-foreground">Transfer TX:</span>
                               <span className="font-mono text-xs">{payment.tx_hash.slice(0, 6)}...{payment.tx_hash.slice(-4)}</span>
                             </div>
                           )}
@@ -496,123 +431,6 @@ const Employment = () => {
             )}
           </motion.div>
 
-          {/* Recent Wallet Transactions Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="space-y-4"
-          >
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <RefreshCw className="h-6 w-6 text-primary" />
-              Recent Wallet Transactions
-            </h2>
-
-            {isLoadingRecentTransactions ? (
-              <Card className="glass-card p-6">
-                <div className="flex items-center justify-center py-8">
-                  <div className="flex items-center gap-3">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <span className="text-muted-foreground">Loading recent transactions...</span>
-                  </div>
-                </div>
-              </Card>
-            ) : recentTransactions.length > 0 ? (
-              <Card className="glass-card p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Your Recent Activity</h3>
-                    <Badge className="bg-purple-500/20 text-purple-700">
-                      {recentTransactions.length} transactions
-                    </Badge>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {recentTransactions.map((tx, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-white/20 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-green-500/20 rounded-lg">
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">
-                              {(() => {
-                                try {
-                                  if (tx.value) {
-                                    const value = parseFloat(tx.value);
-                                    if (value > 0) {
-                                      return `${(value / 1e18).toFixed(4)} ETH`;
-                                    }
-                                  }
-                                  return 'Transaction';
-                                } catch (e) {
-                                  return 'Transaction';
-                                }
-                              })()}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {tx.hash ? `${tx.hash.slice(0, 6)}...${tx.hash.slice(-4)}` : 'Unknown hash'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">
-                            {(() => {
-                              try {
-                                if (tx.timestamp) {
-                                  const date = new Date(tx.timestamp * 1000);
-                                  if (!isNaN(date.getTime())) {
-                                    return date.toLocaleDateString();
-                                  }
-                                  return `Timestamp: ${tx.timestamp}`;
-                                } else if (tx.block_timestamp) {
-                                  const date = new Date(tx.block_timestamp);
-                                  if (!isNaN(date.getTime())) {
-                                    return date.toLocaleDateString();
-                                  }
-                                  return `Block: ${tx.block_timestamp}`;
-                                } else if (tx.created_at) {
-                                  const date = new Date(tx.created_at);
-                                  if (!isNaN(date.getTime())) {
-                                    return date.toLocaleDateString();
-                                  }
-                                  return `Created: ${tx.created_at}`;
-                                }
-                                return 'No timestamp';
-                              } catch (e) {
-                                console.log('Date parsing error:', e, tx);
-                                return `Raw: ${tx.timestamp || tx.block_timestamp || tx.created_at || 'N/A'}`;
-                              }
-                            })()}
-                          </p>
-                          <Badge variant="outline" className="mt-1">
-                            {(() => {
-                              const status = tx.status || tx.result || 'Confirmed';
-                              if (status === 'error' || status === 'failed') {
-                                return 'Failed';
-                              } else if (status === 'success' || status === 'confirmed') {
-                                return 'Confirmed';
-                              } else if (status === 'pending') {
-                                return 'Pending';
-                              }
-                              return status;
-                            })()}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-            ) : (
-              <Card className="glass-card p-6">
-                <div className="text-center py-4">
-                  <RefreshCw className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground">No recent transactions found</p>
-                </div>
-              </Card>
-            )}
-          </motion.div>
 
         </motion.div>
       </div>
@@ -621,3 +439,4 @@ const Employment = () => {
 };
 
 export default Employment;
+

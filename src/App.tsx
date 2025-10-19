@@ -16,12 +16,15 @@ import CreateGroup from "./pages/admin/CreateGroup";
 import Groups from "./pages/admin/Groups";
 import EditGroup from "./pages/admin/EditGroup";
 import NotFound from "./pages/NotFound";
+import { NotificationProvider, TransactionPopupProvider } from "@blockscout/app-sdk";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <Web3Provider>
+       <NotificationProvider>
+      <TransactionPopupProvider>
       <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -101,6 +104,8 @@ const App = () => (
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
+          </TransactionPopupProvider>
+      </NotificationProvider>
     </Web3Provider>
   </QueryClientProvider>
 );
