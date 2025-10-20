@@ -113,18 +113,16 @@ const getChainDisplayInfo = (chain: string) => {
 const getTokenDisplayInfo = (token: string) => {
   const tokenMap: { [key: string]: { logo: JSX.Element; gradient: string } } = {
 'usdc': {
-      gradient: 'from-blue-500 to-blue-700',
-      logo: (
-        <svg className="w-15 h-15" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="16" cy="16" r="16" fill="#2775CA"/>
-          <path d="M11 16C11 13.2386 13.2386 11 16 11C18.7614 11 21 13.2386 21 16C21 18.7614 18.7614 21 16 21C13.2386 21 11 18.7614 11 16Z" stroke="white" strokeWidth="1.5" fill="none"/>
-          <path d="M16 13C16 12.4477 16.4477 12 17 12C17.5523 12 18 12.4477 18 13C18 13.5523 17.5523 14 17 14H16V13Z" fill="white"/>
-          <path d="M16 18C16 18.5523 16.4477 19 17 19C17.5523 19 18 18.5523 18 18C18 17.4477 17.5523 17 17 17H16V18Z" fill="white"/>
-          <path d="M14 13C14 12.4477 14.4477 12 15 12C15.5523 12 16 12.4477 16 13V19C16 19.5523 15.5523 20 15 20C14.4477 20 14 19.5523 14 19V13Z" fill="white"/>
-          <circle cx="16" cy="16" r="2" fill="white"/>
-        </svg>
-      )
-    },
+  gradient: 'from-blue-500 to-blue-700',
+  logo: (
+    <img
+      src="https://assets.coingecko.com/coins/images/6319/small/usdc.png"
+      alt="USDC"
+      className="w-5 h-5"
+    />
+  )
+},
+
     'eth': {
       gradient: 'from-purple-400 to-blue-500',
       logo: (

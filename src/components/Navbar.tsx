@@ -6,6 +6,7 @@ import { ConnectKitButton } from "connectkit";
 import { useAccount, useSwitchChain } from 'wagmi';
 import { useNexus } from '@/providers/NexusProvider';
 import { useEffect } from 'react';
+import { UnifiedBalanceButton } from '@/components/UnifiedBalanceButton';
 
 interface NavbarProps {
   role: "employee" | "admin";
@@ -117,6 +118,9 @@ export const Navbar = ({ role }: NavbarProps) => {
                 </div>
               </div>
             )}
+
+            {/* Unified Balance Button */}
+            {isConnected && isOnTestnet && <UnifiedBalanceButton />}
 
             {/* ConnectKit Button */}
             <ConnectKitButton.Custom>
