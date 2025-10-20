@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, Wallet, User, DollarSign, Loader2 } from "lucide-react";
+import { Save, Wallet, User, DollarSign, Loader2, QrCode, Copy, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileService } from "@/lib/profileService";
 import { useAccount } from "wagmi";
+import QRCode from "qrcode";
 
 const Profile = () => {
   const { toast } = useToast();
@@ -25,6 +26,28 @@ const Profile = () => {
     token: "",
   });
   const [isSaved, setIsSaved] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
+  const [showQRCode, setShowQRCode] = useState(false);
+
+  // Generate QR code for payment link
+  const generateQRCode = async (walletAddress: string) => {
+    if (!walletAddress) return;
+    
+    try {
+      const paymentUrl = `${window.location.origin}/send-crypto/${walletAddress}`;
+      const qrDataUrl = await QRCode.toDataURL(paymentUrl, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      setQrCodeDataUrl(qrDataUrl);
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+    }
+  };
 
   // Load existing profile data on component mount
   useEffect(() => {
@@ -47,7 +70,7 @@ const Profile = () => {
       
       console.log('ProfileService.loadEmployeeProfile result:', result);
       
-      if (result.success && result.data) {
+      if (result.success && 'data' in result && result.data) {
         const { employee, wallet, employeeId } = result.data;
         console.log('Found employee data:', employee);
         console.log('Found wallet data:', wallet);
@@ -66,13 +89,19 @@ const Profile = () => {
           console.log('Setting profile data to:', newProfileData);
           setProfileData(newProfileData);
           setIsSaved(true);
+          
+          // Generate QR code for the wallet address
+          if (newProfileData.walletAddress) {
+            await generateQRCode(newProfileData.walletAddress);
+          }
+          
           console.log('✅ Loaded existing profile data');
         } else {
           console.log('❌ No employee data found in result');
         }
       } else {
         console.log('❌ No existing profile found - starting with empty form');
-        console.log('Error details:', result.error);
+        console.log('Error details:', 'error' in result ? result.error : 'Unknown error');
         
         // If no existing profile but wallet is connected, pre-fill wallet address
         if (walletAddress) {
@@ -197,6 +226,73 @@ const Profile = () => {
                   <p className="text-xs text-muted-foreground pt-2 border-t">
                     Click anywhere to edit your payment details
                   </p>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* QR Code Section */}
+          {isSaved && profileData.walletAddress && (
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <Card className="glass-card p-8 hover-lift">
+                <div className="text-center space-y-4">
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <QrCode className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-semibold">Payment QR Code</h3>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground">
+                    Share this QR code to receive payments directly to your wallet
+                  </p>
+                  
+                  {qrCodeDataUrl && (
+                    <div className="flex justify-center">
+                      <div className="p-4 bg-white rounded-lg border-2 border-gray-200 inline-block">
+                        <img 
+                          src={qrCodeDataUrl} 
+                          alt="Payment QR Code" 
+                          className="w-48 h-48"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">Payment Link:</p>
+                    <div className="flex items-center gap-2 justify-center">
+                      <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        {window.location.origin}/send-crypto/{profileData.walletAddress}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/send-crypto/${profileData.walletAddress}`);
+                          toast({
+                            title: "Copied!",
+                            description: "Payment link copied to clipboard",
+                          });
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`/send-crypto/${profileData.walletAddress}`, '_blank')}
+                    className="mt-4"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Test Payment Page
+                  </Button>
                 </div>
               </Card>
             </motion.div>

@@ -15,6 +15,8 @@ import AdminProfile from "./pages/admin/Profile";
 import CreateGroup from "./pages/admin/CreateGroup";
 import Groups from "./pages/admin/Groups";
 import EditGroup from "./pages/admin/EditGroup";
+import SendCrypto from "./pages/SendCrypto";
+import SendCryptoToUser from "./pages/SendCryptoToUser";
 import NotFound from "./pages/NotFound";
 import { NotificationProvider, TransactionPopupProvider } from "@blockscout/app-sdk";
 
@@ -97,6 +99,22 @@ const App = () => (
                  
                       <AdminProfile />
                     
+                  } 
+                />
+                
+                {/* Send Crypto Route */}
+                <Route 
+                  path="/send-crypto" 
+                  element={
+                    <SendCrypto />
+                  } 
+                />
+                
+                {/* Send Crypto to User Route */}
+                <Route 
+                  path="/send-crypto/:walletAddress" 
+                  element={
+                    <SendCryptoToUser />
                   } 
                 />
                 
