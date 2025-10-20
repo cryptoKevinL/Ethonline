@@ -1,0 +1,18 @@
+name: Supabase Cron Test
+
+on:
+  schedule:
+    # Every 5 minutes (UTC)
+    - cron: "*/5 * * * *"
+  workflow_dispatch:  # allows manual trigger from the GitHub Actions tab
+
+jobs:
+  call-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST to Supabase Edge Function
+        run: |
+          curl -X POST https://memgpowzdqeuwdpueajh.functions.supabase.co/cron-test \
+            -H "Content-Type: application/json" \
+            -d '{}'
+
