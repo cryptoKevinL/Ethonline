@@ -7,10 +7,9 @@ import { Building2, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileService } from "@/lib/profileService";
 import { useNexus } from '@/providers/NexusProvider';
-import { useAccount, usePublicClient, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
 import { GroupCard } from "@/components/groups/GroupCard";
 import { IntentsSection } from "@/components/groups/IntentsSection";
-import { PaymentHistory } from "@/components/groups/PaymentHistory";
 import { 
   convertToUSDC, 
   formatTotalPayment, 
@@ -19,6 +18,149 @@ import {
   validateEmployeeData 
 } from "@/utils/groupsUtils";
 import { extractIntentData } from "@/utils/extractIntentData";
+
+// Helper function to get chain display info
+const getChainDisplayInfo = (chain: string) => {
+  const chainMap: { [key: string]: { name: string; logo: JSX.Element; gradient: string } } = {
+    'sepolia': {
+      name: 'Sepolia',
+      gradient: 'from-purple-400 to-blue-500',
+      logo: (
+        <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/>
+        </svg>
+      )
+    },
+    'ethereum': {
+      name: 'Sepolia',
+      gradient: 'from-purple-400 to-blue-500',
+      logo: (
+        <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/>
+        </svg>
+      )
+    },
+    'base': {
+      name: 'Base Sepolia',
+      gradient: 'from-blue-400 to-cyan-500',
+      logo: (
+        <svg className="w-7 h-7 text-white" viewBox="0 0 111 111" fill="currentColor">
+          <path d="M54.921 110.034C85.359 110.034 110.034 85.402 110.034 55.017C110.034 24.6319 85.359 0 54.921 0C26.0432 0 2.35281 22.1714 0 50.3923H72.8467V59.6416H3.9565e-07C2.35281 87.8625 26.0432 110.034 54.921 110.034Z"/>
+        </svg>
+      )
+    },
+    'base-sepolia': {
+      name: 'Base Sepolia',
+      gradient: 'from-blue-400 to-cyan-500',
+      logo: (
+        <svg className="w-7 h-7 text-white" viewBox="0 0 111 111" fill="currentColor">
+          <path d="M54.921 110.034C85.359 110.034 110.034 85.402 110.034 55.017C110.034 24.6319 85.359 0 54.921 0C26.0432 0 2.35281 22.1714 0 50.3923H72.8467V59.6416H3.9565e-07C2.35281 87.8625 26.0432 110.034 54.921 110.034Z"/>
+        </svg>
+      )
+    },
+    'optimism': {
+      name: 'Optimism Sepolia',
+      gradient: 'from-red-400 to-red-600',
+      logo: (
+        <svg className="w-7 h-7 text-white" viewBox="0 0 500 500" fill="currentColor">
+          <circle cx="250" cy="250" r="250"/>
+        </svg>
+      )
+    },
+    'optimism-sepolia': {
+      name: 'Optimism Sepolia',
+      gradient: 'from-red-400 to-red-600',
+      logo: (
+        <svg className="w-7 h-7 text-white" viewBox="0 0 500 500" fill="currentColor">
+          <circle cx="250" cy="250" r="250"/>
+        </svg>
+      )
+    },
+    'arbitrum': {
+      name: 'Arbitrum Sepolia',
+      gradient: 'from-blue-500 to-blue-700',
+      logo: (
+        <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0L1.608 6v12L12 24l10.392-6V6L12 0zm0 3.6L19.2 7.8v8.4L12 20.4 4.8 16.2V7.8L12 3.6z"/>
+        </svg>
+      )
+    },
+    'arbitrum-sepolia': {
+      name: 'Arbitrum Sepolia',
+      gradient: 'from-blue-500 to-blue-700',
+      logo: (
+        <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0L1.608 6v12L12 24l10.392-6V6L12 0zm0 3.6L19.2 7.8v8.4L12 20.4 4.8 16.2V7.8L12 3.6z"/>
+        </svg>
+      )
+    },
+    'polygon': {
+      name: 'Polygon',
+      gradient: 'from-purple-500 to-purple-700',
+      logo: (
+        <svg className="w-7 h-7 text-white" viewBox="0 0 38 33" fill="currentColor">
+          <path d="M29 10.2c-.7-.4-1.6-.4-2.4 0L21 13.5l-3.8 2.1-5.5 3.3c-.7.4-1.6.4-2.4 0L5 16.3c-.7-.4-1.2-1.2-1.2-2.1v-4c0-.8.4-1.6 1.2-2.1l4.3-2.5c.7-.4 1.6-.4 2.4 0L16 8.2c.7.4 1.2 1.2 1.2 2.1v3.3l3.8-2.2V8c0-.8-.4-1.6-1.2-2.1l-8-4.7c-.7-.4-1.6-.4-2.4 0L1.2 5.9C.4 6.3 0 7.1 0 8v9.4c0 .8.4 1.6 1.2 2.1l8.1 4.7c.7.4 1.6.4 2.4 0l5.5-3.2 3.8-2.2 5.5-3.2c.7-.4 1.6-.4 2.4 0l4.3 2.5c.7.4 1.2 1.2 1.2 2.1v4c0 .8-.4 1.6-1.2 2.1L29 28.8c-.7.4-1.6.4-2.4 0l-4.3-2.5c-.7-.4-1.2-1.2-1.2-2.1V21l-3.8 2.2v3.3c0 .8.4 1.6 1.2 2.1l8.1 4.7c.7.4 1.6.4 2.4 0l8.1-4.7c.7-.4 1.2-1.2 1.2-2.1V17c0-.8-.4-1.6-1.2-2.1L29 10.2z"/>
+        </svg>
+      )
+    }
+  };
+
+  // Return the chain info if it exists, otherwise return undefined
+  return chainMap[chain.toLowerCase()];
+};
+
+// Helper function to get token display info
+const getTokenDisplayInfo = (token: string) => {
+  const tokenMap: { [key: string]: { logo: JSX.Element; gradient: string } } = {
+'usdc': {
+      gradient: 'from-blue-500 to-blue-700',
+      logo: (
+        <svg className="w-15 h-15" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="16" cy="16" r="16" fill="#2775CA"/>
+          <path d="M11 16C11 13.2386 13.2386 11 16 11C18.7614 11 21 13.2386 21 16C21 18.7614 18.7614 21 16 21C13.2386 21 11 18.7614 11 16Z" stroke="white" strokeWidth="1.5" fill="none"/>
+          <path d="M16 13C16 12.4477 16.4477 12 17 12C17.5523 12 18 12.4477 18 13C18 13.5523 17.5523 14 17 14H16V13Z" fill="white"/>
+          <path d="M16 18C16 18.5523 16.4477 19 17 19C17.5523 19 18 18.5523 18 18C18 17.4477 17.5523 17 17 17H16V18Z" fill="white"/>
+          <path d="M14 13C14 12.4477 14.4477 12 15 12C15.5523 12 16 12.4477 16 13V19C16 19.5523 15.5523 20 15 20C14.4477 20 14 19.5523 14 19V13Z" fill="white"/>
+          <circle cx="16" cy="16" r="2" fill="white"/>
+        </svg>
+      )
+    },
+    'eth': {
+      gradient: 'from-purple-400 to-blue-500',
+      logo: (
+        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/>
+        </svg>
+      )
+    },
+    'weth': {
+      gradient: 'from-purple-500 to-indigo-600',
+      logo: (
+        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"/>
+        </svg>
+      )
+    }
+  };
+
+  // Return the token info if it exists, otherwise return undefined
+  return tokenMap[token.toLowerCase()];
+};
+
+// Helper function to get chain name for Blockscout
+const getChainName = (chainId: number) => {
+  const chainMap: { [key: number]: string } = {
+    1: 'eth',
+    11155111: 'eth-sepolia',
+    8453: 'base',
+    84532: 'base-sepolia',
+    42161: 'arbitrum',
+    421614: 'arbitrum-sepolia',
+    10: 'optimism',
+    11155420: 'optimism-sepolia'
+  };
+  return chainMap[chainId] || '';
+};
 
 interface Group {
   id: string;
@@ -54,6 +196,9 @@ const Groups = () => {
     currentStep: string;
     employeeName: string;
     amount: string;
+    token: string;
+    sourceChain: string;
+    destinationChain: string;
     status: 'simulating' | 'signing' | 'confirming' | 'saving' | 'complete' | 'error';
     signatureStep: number;
     totalSignatures: number;
@@ -63,6 +208,9 @@ const Groups = () => {
     currentStep: '',
     employeeName: '',
     amount: '',
+    token: '',
+    sourceChain: 'sepolia',
+    destinationChain: '',
     status: 'simulating',
     signatureStep: 0,
     totalSignatures: 0,
@@ -116,10 +264,8 @@ const Groups = () => {
   useEffect(() => {
     if (address) {
       console.log('🚀 Page loaded, starting initial fetch...');
-      // Load intents from SDK (same as refresh button)
       fetchUserIntents(1);
       
-      // Auto-refresh after page loads to get latest data
       console.log('⏰ Setting auto-refresh timeout for 3 seconds...');
       const autoRefreshTimeout = setTimeout(() => {
         console.log('🔄 AUTO-REFRESH TRIGGERED - Getting latest data...');
@@ -133,7 +279,6 @@ const Groups = () => {
     }
   }, [address, groups]);
 
-  // Auto-refresh after Nexus SDK is initialized
   useEffect(() => {
     if (isInitialized && nexusSDK) {
       console.log('🔄 Nexus SDK initialized, auto-refreshing payments...');
@@ -221,15 +366,17 @@ const Groups = () => {
     setIsProcessingPayment(paymentKey);
     setPaymentStatus(prev => ({ ...prev, [paymentKey]: 'processing' }));
 
-    // Show loading overlay
     setPaymentProgress({
       isVisible: true,
       currentStep: 'Preparing payment...',
       employeeName: `${employee.first_name} ${employee.last_name}`,
-      amount: `${employee.payment_amount} ${employee.token?.toUpperCase()}`,
+      amount: `${employee.payment_amount}`,
+      token: employee.token?.toUpperCase() || 'USDC',
+      sourceChain: 'sepolia',
+      destinationChain: employee.chain || 'base-sepolia',
       status: 'simulating',
       signatureStep: 0,
-      totalSignatures: 3, // Typically 3 signatures for cross-chain payments
+      totalSignatures: 3,
       signatureDescription: 'Preparing transaction simulation...'
     });
 
@@ -237,6 +384,7 @@ const Groups = () => {
       validateEmployeeData(employee);
 
       const destinationChainId = getChainId(employee.chain);
+      const standardSolverAddress = '0x247365225B96Cd8bc078F7263F6704f3EaD96494'; // Standard Nexus solver
       const tokenType = getTokenType(employee.token);
 
       const transferParams = {
@@ -244,13 +392,12 @@ const Groups = () => {
         amount: parseFloat(employee.payment_amount || '0').toString(),
         chainId: destinationChainId as any,
         recipient: employee.wallet_address as `0x${string}`,
-        sourceChains: [getSourceChainId()] as number[]
+        sourceChains: [11155111] as number[]
       };
 
       console.log('Transfer Parameters:', transferParams);
       console.log('Employee Data:', employee);
 
-      // Run simulation first
       setPaymentProgress(prev => ({ 
         ...prev, 
         currentStep: 'Simulating transaction...', 
@@ -258,6 +405,7 @@ const Groups = () => {
         signatureStep: 1,
         signatureDescription: 'Simulating cross-chain transfer parameters...'
       }));
+      
       try {
         console.log('=== RUNNING NEXUS SDK SIMULATION ===');
         const simulationResult = await nexusSDK.simulateTransfer(transferParams);
@@ -268,7 +416,6 @@ const Groups = () => {
         console.log('Continuing with payment despite simulation error...');
       }
 
-      // Update progress for signing - Signature 1: Token allowance
       setPaymentProgress(prev => ({ 
         ...prev, 
         currentStep: 'Please sign the token allowance in your wallet...', 
@@ -279,7 +426,6 @@ const Groups = () => {
 
       const transferResult = await nexusSDK.transfer(transferParams);
 
-      // Update progress for confirmation - Signature 2: Deposit to solver
       setPaymentProgress(prev => ({ 
         ...prev, 
         currentStep: 'Please sign the deposit to solver...', 
@@ -291,7 +437,6 @@ const Groups = () => {
       // Wait a moment to show the second signature step
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Update progress for final confirmation - Signature 3: Direct transfer to employee
       setPaymentProgress(prev => ({ 
         ...prev, 
         currentStep: 'Please sign the direct transfer to employee...', 
@@ -300,10 +445,6 @@ const Groups = () => {
         signatureDescription: 'Signing direct transfer to employee on destination chain...'
       }));
 
-      // Wait a moment to show the third signature step
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Update progress for confirmation
       setPaymentProgress(prev => ({ 
         ...prev, 
         currentStep: 'Confirming all transactions...', 
@@ -312,24 +453,22 @@ const Groups = () => {
         signatureDescription: 'All signatures complete, confirming on blockchain...'
       }));
 
-    // PRINT TRANSFER RESULT TO CONSOLE
-    console.log('=== TRANSFER RESULT OBJECT ===');
-    console.log('TransferResult:', transferResult);
-    console.log('Success:', transferResult.success);
-    console.log('All transferResult properties:', Object.keys(transferResult));
-    
-    if (transferResult.success) {
-      console.log('Transaction Hash:', transferResult.transactionHash);
-      console.log('Explorer URL:', transferResult.explorerUrl);
-    } else {
-      console.log('Error:', "Transfer failed");
-    }
-    console.log('=== END TRANSFER RESULT ===');
+      console.log('=== TRANSFER RESULT OBJECT ===');
+      console.log('TransferResult:', transferResult);
+      console.log('Success:', transferResult.success);
+      console.log('All transferResult properties:', Object.keys(transferResult));
+      
+      if (transferResult.success) {
+        console.log('Transaction Hash:', transferResult.transactionHash);
+        console.log('Explorer URL:', transferResult.explorerUrl);
+      } else {
+        console.log('Error:', "Transfer failed");
+      }
+      console.log('=== END TRANSFER RESULT ===');
 
       if (transferResult.success) {
         setPaymentStatus(prev => ({ ...prev, [paymentKey]: 'success' }));
         
-        // Update progress for database saving
         setPaymentProgress(prev => ({ 
           ...prev, 
           currentStep: 'Saving payment details...', 
@@ -351,114 +490,70 @@ const Groups = () => {
             }
           }
         
-        // Extract intent ID from transfer result - try multiple possible property names
-        const intentId = (transferResult as any).intentId || 
-                        (transferResult as any).intent_id || 
-                        (transferResult as any).id || 
-                        '';
-        
-        // Try to get the most recent transaction hash from the user's wallet (on source chain)
-        const recentTxData = await getRecentTransactionHash(getSourceChainId());
-        
-        // Extract first transaction hash (initial deposit from user's wallet)
-        // Use the recent transaction hash from wallet/Blockscout, or fallback to SDK result
-        const firstTxHash = recentTxData.hash || 
-                           (transferResult as any).sourceTxHash || 
-                           (transferResult as any).depositTxHash || 
-                           (transferResult as any).initialTxHash ||
-                           transferResult.transactionHash || 
-                           (transferResult as any).txHash || 
-                           (transferResult as any).hash || 
-                           '';
-        
-        // Extract deposit solver address from transaction data if available
-        const depositSolverAddress = recentTxData.solverAddress || '';
-        
-        // Try to find the solver → employer transaction hash
-        let solverToEmployerHash = '';
-        try {
-          console.log('🔍 Searching for solver → employer transaction...');
-          const destinationChainId = getChainId(employee.chain);
-          const chainMap: Record<number, string> = {
-            11155111: 'eth-sepolia',
-            11155420: 'optimism-sepolia',
-            84532: 'base-sepolia',
-            80002: 'polygon-amoy',
-            421614: 'arbitrum-sepolia'
-          };
-          const chainName = chainMap[destinationChainId] || 'base-sepolia';
-          const standardSolverAddress = '0x247365225B96Cd8bc078F7263F6704f3EaD96494'; // Standard Nexus solver
-          const employerAddress = address; // Connected wallet address
+          const intentId = (transferResult as any).intentId || 
+                          (transferResult as any).intent_id || 
+                          (transferResult as any).id || 
+                          '';
           
-          // Try regular transactions first
-          const solverResponse = await fetch(`https://memgpowzdqeuwdpueajh.functions.supabase.co/blockscout?chain=${chainName}&address=${standardSolverAddress}&api=v1&page=1&offset=100`);
-          if (solverResponse.ok) {
-            const solverData = await solverResponse.json();
-            if (solverData.result && Array.isArray(solverData.result)) {
-              // Find transaction where solver sends to employer
-              const employerTx = solverData.result.find((tx: any) => 
-                tx.to && tx.to.toLowerCase() === employerAddress?.toLowerCase()
-              );
-              if (employerTx) {
-                solverToEmployerHash = employerTx.hash;
-                console.log('✅ Found solver → employer transaction (regular):', solverToEmployerHash);
-              } else {
-                console.log('❌ No solver → employer transaction found in regular transactions');
-                
-                // Try internal transactions using Blockscout v2 API
-                console.log('🔍 Searching internal transactions...');
-                const internalResponse = await fetch(`https://${chainName}.blockscout.com/api/v2/addresses/${employerAddress}/internal-transactions`);
-                if (internalResponse.ok) {
-                  const internalData = await internalResponse.json();
-                  if (internalData.items && Array.isArray(internalData.items)) {
-                    // Look for internal transactions where solver sends to employer
-                    const internalTx = internalData.items[0]; // Just take the first (most recent) transaction
-                    if (internalTx) {
-                      solverToEmployerHash = internalTx.transaction_hash;
-                      console.log('✅ Found solver → employer transaction (internal):', solverToEmployerHash);
-                    } else {
-                      console.log('❌ No solver → employer transaction found in internal transactions');
-                      console.log('🔍 Available internal transactions:');
-                      internalData.items.slice(0, 5).forEach((tx: any, index: number) => {
-                        console.log(`  ${index + 1}. From: ${tx.from?.hash}, To: ${tx.to?.hash}, Hash: ${tx.transaction_hash}`);
-                      });
-                    }
-                  }
+          const recentTxData = await getRecentTransactionHash();
+          
+          const firstTxHash = recentTxData.hash || 
+                             (transferResult as any).sourceTxHash || 
+                             (transferResult as any).depositTxHash || 
+                             (transferResult as any).initialTxHash ||
+                             transferResult.transactionHash || 
+                             (transferResult as any).txHash || 
+                             (transferResult as any).hash || 
+                             '';
+          
+          const depositSolverAddress = recentTxData.solverAddress || '';
+          
+          // Find solver → employer transaction hash
+          let solverToEmployerHash = '';
+          try {
+            const chainName = getChainName(destinationChainId);
+            if (chainName && address) {
+              console.log(`🔍 Searching for solver → employer transaction on ${chainName}...`);
+              const internalResponse = await fetch(`https://${chainName}.blockscout.com/api/v2/addresses/${address}/internal-transactions`);
+              if (internalResponse.ok) {
+                const internalData = await internalResponse.json();
+                if (internalData.items && internalData.items.length > 0) {
+                  // Take the first (most recent) internal transaction
+                  const employerTx = internalData.items[0];
+                  solverToEmployerHash = employerTx.transaction_hash || '';
+                  console.log('✅ Found solver → employer transaction (internal):', solverToEmployerHash);
                 }
               }
             }
+          } catch (error) {
+            console.error('Error finding solver → employer transaction:', error);
           }
-        } catch (error) {
-          console.error('Error finding solver → employer transaction:', error);
-        }
-        
-        console.log('Extracted intent ID:', intentId);
-        console.log('First transaction hash (deposit):', firstTxHash);
-        console.log('Solver → employer hash:', solverToEmployerHash);
-        console.log('Final transaction hash (transfer):', transferResult.transactionHash);
-        console.log('Deposit solver address:', depositSolverAddress);
-        
-        // Only log if we found a different transaction hash
-        if (firstTxHash && firstTxHash !== transferResult.transactionHash) {
-          console.log('✅ Successfully captured different deposit and transfer transaction hashes using Supabase function');
-        } else if (firstTxHash) {
-          console.log('⚠️ Deposit and transfer hashes are the same - may need to wait longer for indexing');
-        } else {
-          console.log('❌ No deposit transaction hash found via Supabase function - using transfer hash as fallback');
-        }
-        
-        // If intent ID is still empty, try to extract from explorer URL
-        let finalIntentId = intentId;
-        if (!finalIntentId && transferResult.explorerUrl) {
-          const urlMatch = transferResult.explorerUrl.match(/intent\/([a-zA-Z0-9-_]+)/);
-          if (urlMatch && urlMatch[1]) {
-            finalIntentId = urlMatch[1];
-            console.log('Extracted intent ID from URL:', finalIntentId);
+          
+          console.log('Extracted intent ID:', intentId);
+          console.log('First transaction hash (deposit):', firstTxHash);
+          console.log('Final transaction hash (transfer):', transferResult.transactionHash);
+          console.log('Deposit solver address:', depositSolverAddress);
+          console.log('Solver → employer hash:', solverToEmployerHash);
+          
+          if (firstTxHash && firstTxHash !== transferResult.transactionHash) {
+            console.log('✅ Successfully captured different deposit and transfer transaction hashes using Supabase function');
+          } else if (firstTxHash) {
+            console.log('⚠️ Deposit and transfer hashes are the same - may need to wait longer for indexing');
+          } else {
+            console.log('❌ No deposit transaction hash found via Supabase function - using transfer hash as fallback');
           }
-        }
+          
+          let finalIntentId = intentId;
+          if (!finalIntentId && transferResult.explorerUrl) {
+            const urlMatch = transferResult.explorerUrl.match(/intent\/([a-zA-Z0-9-_]+)/);
+            if (urlMatch && urlMatch[1]) {
+              finalIntentId = urlMatch[1];
+              console.log('Extracted intent ID from URL:', finalIntentId);
+            }
+          }
           
           const paymentResult = await ProfileService.savePayment({
-          employment_id: employmentId || null,
+            employment_id: employmentId || null,
             employer_id: group.employer?.id,
             employee_id: employee.id,
             chain: employee.chain,
@@ -470,9 +565,9 @@ const Groups = () => {
             tx_hash: transferResult.transactionHash,
             intent_id: finalIntentId,
             first_tx_hash: firstTxHash,
-            solver_to_employer_hash: solverToEmployerHash,
             deposit_solver_address: depositSolverAddress,
-            solver_address: '0x247365225B96Cd8bc078F7263F6704f3EaD96494', // Standard solver address
+            solver_address: standardSolverAddress,
+            solver_to_employer_hash: solverToEmployerHash,
             status: 'confirmed'
           });
 
@@ -483,7 +578,6 @@ const Groups = () => {
           console.error('Error saving payment to database:', dbError);
         }
         
-        // Update progress for completion
         setPaymentProgress(prev => ({ 
           ...prev, 
           currentStep: 'Payment completed successfully!', 
@@ -492,7 +586,6 @@ const Groups = () => {
           signatureDescription: 'All signatures processed and payment complete!'
         }));
         
-        // Hide loading overlay after a short delay
         setTimeout(() => {
           setPaymentProgress(prev => ({ ...prev, isVisible: false }));
         }, 2000);
@@ -503,8 +596,8 @@ const Groups = () => {
         });
 
         setTimeout(() => {
-        fetchUserIntents(1);
-      }, 3000);
+          fetchUserIntents(1);
+        }, 3000);
 
         return { success: true, transactionHash: transferResult.transactionHash };
 
@@ -512,7 +605,6 @@ const Groups = () => {
         console.error('Transfer failed:', transferResult);
         setPaymentStatus(prev => ({ ...prev, [paymentKey]: 'error' }));
         
-        // Update progress for error
         setPaymentProgress(prev => ({ 
           ...prev, 
           currentStep: 'Payment failed', 
@@ -521,7 +613,6 @@ const Groups = () => {
           signatureDescription: 'Payment failed during processing...'
         }));
         
-        // Hide loading overlay after a short delay
         setTimeout(() => {
           setPaymentProgress(prev => ({ ...prev, isVisible: false }));
         }, 3000);
@@ -539,7 +630,6 @@ const Groups = () => {
       console.error('Error processing payment:', error);
       setPaymentStatus(prev => ({ ...prev, [paymentKey]: 'error' }));
       
-      // Update progress for error
       setPaymentProgress(prev => ({ 
         ...prev, 
         currentStep: 'Payment failed', 
@@ -548,7 +638,6 @@ const Groups = () => {
         signatureDescription: 'An error occurred during payment processing...'
       }));
       
-      // Hide loading overlay after a short delay
       setTimeout(() => {
         setPaymentProgress(prev => ({ ...prev, isVisible: false }));
       }, 3000);
@@ -615,11 +704,11 @@ const Groups = () => {
           description: `Processing payment ${i + 1}/${validEmployees.length} for ${employee.first_name} ${employee.last_name}`,
         });
 
-      console.log(`=== PROCESSING PAYMENT ${i + 1}/${validEmployees.length} ===`);
-      console.log('Employee:', `${employee.first_name} ${employee.last_name}`);
-      console.log('Amount:', employee.payment_amount);
-      console.log('Recipient:', employee.wallet_address);
-      
+        console.log(`=== PROCESSING PAYMENT ${i + 1}/${validEmployees.length} ===`);
+        console.log('Employee:', `${employee.first_name} ${employee.last_name}`);
+        console.log('Amount:', employee.payment_amount);
+        console.log('Recipient:', employee.wallet_address);
+        
         const result = await handlePayEmployee(group, employee);
         
         if (result.success) {
@@ -657,99 +746,79 @@ const Groups = () => {
       setIsProcessingPayment(null);
     }
   };
-const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
-  if (!nexusSDK || !isInitialized) {
-    console.log('Nexus SDK not ready');
-    return;
-  }
 
-  setIsLoadingIntents(true);
-  try {
-    console.log('=== FETCHING INTENTS FROM SDK ===');
-    const intents = await nexusSDK.getMyIntents(page);
-    console.log('Number of intents found:', intents?.length);
-    
-    if (intents && intents.length > 0) {
-      const processedIntents = await Promise.all(
-        intents.map(async (intent: any, index: number) => {
-          // REMOVED: console.log(`\n=== PROCESSING INTENT ${index} ===`);
-          const intentData = await extractIntentData(intent, address || '');
-          return {
-            ...intentData,
-            timestamp: intentData.timestamp - (index * 3600)
-          };
-        })
-      );
+  const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
+    if (!nexusSDK || !isInitialized) {
+      console.log('Nexus SDK not ready');
+      return;
+    }
+
+    setIsLoadingIntents(true);
+    try {
+      console.log('=== FETCHING INTENTS FROM SDK ===');
+      const intents = await nexusSDK.getMyIntents(page);
+      console.log('Number of intents found:', intents?.length);
       
-      setUserIntents(processedIntents.slice(0, 3));
-      setAllUserIntents(processedIntents);
-      setIntentsPage(page);
-      
-      // Debug popup disabled
-      // toast({
-      //   title: "Debug Data Loaded",
-      //   description: `Found ${processedIntents.length} intents`,
-      // });
-      
+      if (intents && intents.length > 0) {
+        const processedIntents = await Promise.all(
+          intents.map(async (intent: any, index: number) => {
+            const intentData = await extractIntentData(intent, address || '');
+            return {
+              ...intentData,
+              timestamp: intentData.timestamp - (index * 3600)
+            };
+          })
+        );
+        
+        setUserIntents(processedIntents.slice(0, 3));
+        setAllUserIntents(processedIntents);
+        setIntentsPage(page);
       } else {
-      console.log('No intents found for user');
+        console.log('No intents found for user');
+        setUserIntents([]);
+        setAllUserIntents([]);
+        
+        toast({
+          title: "No Intents Found",
+          description: "No payment intents found for your account",
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching user intents:', error);
       setUserIntents([]);
       setAllUserIntents([]);
       
       toast({
-        title: "No Intents Found",
-        description: "No payment intents found for your account",
-        variant: "default",
+        title: "Error Loading Intents",
+        description: "Failed to load payment intents from SDK",
+        variant: "destructive",
       });
+    } finally {
+      setIsLoadingIntents(false);
     }
-  } catch (error) {
-    console.error('Error fetching user intents:', error);
-    setUserIntents([]);
-    setAllUserIntents([]);
-    
-    toast({
-      title: "Error Loading Intents",
-      description: "Failed to load payment intents from SDK",
-      variant: "destructive",
-    });
-  } finally {
-    setIsLoadingIntents(false);
-  }
-};
+  };
 
   const handleShowAllIntents = () => {
     if (showAllIntents) {
       setUserIntents(allUserIntents.slice(0, 3));
       setShowAllIntents(false);
     } else {
-      // Limit to 10 intents to prevent browser freeze
       setUserIntents(allUserIntents.slice(0, 10));
       setShowAllIntents(true);
     }
   };
 
-
-  // Helper function to get the source chain ID (where the user deposits from)
-  const getSourceChainId = (): number => {
-    // For now, source is always Sepolia (11155111) since that's where users connect their wallet
-    // In the future, this could be dynamic based on user's wallet connection
-    return 11155111; // Ethereum Sepolia
-  };
-
-  // Get the most recent transaction hash from the user's wallet
-  const getRecentTransactionHash = async (chainId?: number): Promise<{ hash: string | null; solverAddress: string | null }> => {
+  const getRecentTransactionHash = async (): Promise<{ hash: string | null; solverAddress: string | null }> => {
     if (!address) return { hash: null, solverAddress: null };
     
     try {
-      // Wait a bit for the transaction to be indexed
-      await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Method 1: Try to get transaction from wallet connection
       try {
         if (connector) {
           const provider = await connector.getProvider();
           if (provider && typeof provider === 'object' && 'request' in provider) {
-            // Try to get the transaction count to see if there are new transactions
             const txCount = await (provider as any).request({
               method: 'eth_getTransactionCount',
               params: [address, 'latest']
@@ -761,40 +830,24 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
         console.log('Could not get transaction count from wallet:', error);
       }
       
-      // Method 2: Use Supabase function for the specified chain
       try {
-        // Map chain ID to chain name for Supabase function
-        const chainMap: Record<number, string> = {
-          11155111: 'eth-sepolia', // Ethereum Sepolia
-          11155420: 'optimism-sepolia', // Optimism Sepolia
-          84532: 'base-sepolia', // Base Sepolia
-          80002: 'polygon-amoy', // Polygon Amoy
-          421614: 'arbitrum-sepolia' // Arbitrum Sepolia
-        };
-        
-        const chainName = chainId ? chainMap[chainId] || 'eth-sepolia' : 'eth-sepolia';
-        console.log(`Trying Supabase function for chain: ${chainName} (ID: ${chainId})...`);
-        const response = await fetch(`https://memgpowzdqeuwdpueajh.functions.supabase.co/blockscout?chain=${chainName}&address=${address}&api=v2`);
+        console.log('Trying Supabase function for Sepolia (chain: eth-sepolia)...');
+        const response = await fetch(`https://memgpowzdqeuwdpueajh.functions.supabase.co/blockscout?chain=eth-sepolia&address=${address}&api=v2`);
         
         if (response.ok) {
           const data = await response.json();
           console.log('Supabase function response:', data);
           
-          // Handle both v1 and v2 API response formats
           let transactions = [];
           if (data.result && Array.isArray(data.result)) {
-            // v1 API format
             transactions = data.result;
           } else if (data.items && Array.isArray(data.items)) {
-            // v2 API format
             transactions = data.items;
           } else if (Array.isArray(data)) {
-            // Direct array format
             transactions = data;
           }
           
           if (transactions.length > 0) {
-            // Get the most recent transaction
             const latestTx = transactions[0];
             console.log('Found recent transaction from Supabase function:', latestTx.hash);
             console.log('Transaction details:', {
@@ -805,7 +858,6 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
               gasPrice: latestTx.gasPrice || latestTx.gas_price,
               timestamp: latestTx.timestamp || latestTx.timeStamp
             });
-            // Extract just the hash string from the 'to' field
             const solverAddress = typeof latestTx.to === 'string' ? latestTx.to : latestTx.to?.hash || '';
             console.log('Solver address (transaction destination):', solverAddress);
             return { hash: latestTx.hash, solverAddress };
@@ -820,29 +872,24 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
         console.log('Supabase function failed:', error);
       }
       
-      // Method 3: Use public client as fallback
       if (!publicClient) {
-        return null;
+        return { hash: null, solverAddress: null };
       }
       
-      // Get the latest block number
       const blockNumber = await publicClient.getBlockNumber();
       
-      // Check the last 20 blocks for transactions
       for (let i = 0; i < 20; i++) {
         try {
           const blockNumberToCheck = blockNumber - BigInt(i);
           const block = await publicClient.getBlock({ blockNumber: blockNumberToCheck, includeTransactions: true });
           
           if (block && block.transactions) {
-            // Look for transactions where the user's address is the 'from' field
             for (const tx of block.transactions) {
               if (typeof tx === 'object' && tx.from && tx.from.toLowerCase() === address.toLowerCase()) {
-                     console.log('Found outgoing transaction hash:', tx.hash, 'in block', blockNumberToCheck);
-                     // Extract just the hash string from the 'to' field
-                     const solverAddress = typeof tx.to === 'string' ? tx.to : (tx.to as { hash?: string })?.hash || '';
-                     console.log('Solver address (transaction destination):', solverAddress);
-                     return { hash: tx.hash, solverAddress };
+                console.log('Found outgoing transaction hash:', tx.hash, 'in block', blockNumberToCheck);
+                const solverAddress = typeof tx.to === 'string' ? tx.to : (tx.to as { hash?: string })?.hash || '';
+                console.log('Solver address (transaction destination):', solverAddress);
+                return { hash: tx.hash, solverAddress };
               }
             }
           }
@@ -851,80 +898,12 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
         }
       }
       
-           return { hash: null, solverAddress: null };
-         } catch (error) {
-           console.error('Error fetching recent transaction hash:', error);
-           return { hash: null, solverAddress: null };
-         }
-  };
-
-
-  // Load existing payments from database and show them as intents immediately
-  const loadDatabasePaymentsAsIntents = async () => {
-    if (!address) return;
-
-    try {
-      if (groups.length > 0 && groups[0].employer?.id) {
-        console.log('🔄 Loading database payments as intents at:', new Date().toISOString());
-        const paymentsResult = await ProfileService.getEmployerPayments(groups[0].employer.id, 10);
-        
-        if (paymentsResult.success && paymentsResult.data) {
-          console.log('Loading database payments as intents:', paymentsResult.data);
-          console.log('Number of payments returned:', paymentsResult.data.length);
-          console.log('Intent IDs in order:', paymentsResult.data.map(p => p.intent_id));
-          
-          // Convert database payments to intent format
-          const databaseIntents = paymentsResult.data.map((payment: any) => {
-            const destinationChainId = getChainId(payment.chain);
-            console.log(`Payment chain: ${payment.chain}, mapped to chain ID: ${destinationChainId}`);
-            
-            return {
-              intentId: payment.intent_id,
-              sourceAmount: payment.amount_token,
-              sourceCurrency: payment.token?.toUpperCase() || 'ETH',
-              destAmount: payment.amount_token, // Assuming same amount for now
-              destCurrency: payment.token?.toUpperCase() || 'ETH',
-              sourceChain: payment.chain,
-              destChain: payment.chain, // Assuming same chain for now
-              status: payment.status === 'confirmed' ? 'SUCCESS' : 'PENDING',
-              timestamp: new Date(payment.created_at).getTime() / 1000,
-              sender: address,
-              recipient: payment.recipient,
-              solver: payment.solver_address || '0x247365225B96Cd8bc078F7263F6704f3EaD96494', // Use stored solver or fallback
-              totalFees: '0.0001', // Default fee
-              senderToSolverHash: payment.first_tx_hash,
-              solverToReceiverHash: payment.tx_hash,
-              hasRealData: true,
-              sourceChainId: getSourceChainId(), // Source chain (deposit chain)
-              destinationChainId: destinationChainId // Destination based on payment chain
-            };
-          });
-
-          // Merge with existing intents (avoid duplicates)
-          setUserIntents(prevIntents => {
-            const existingIds = new Set(prevIntents.map(intent => intent.intentId));
-            const newIntents = databaseIntents.filter(intent => !existingIds.has(intent.intentId));
-            const result = [...newIntents, ...prevIntents].slice(0, 3);
-            console.log('Setting userIntents to:', result.length, 'intents');
-            return result;
-          });
-
-          setAllUserIntents(prevIntents => {
-            const existingIds = new Set(prevIntents.map(intent => intent.intentId));
-            const newIntents = databaseIntents.filter(intent => !existingIds.has(intent.intentId));
-            const result = [...newIntents, ...prevIntents];
-            console.log('Setting allUserIntents to:', result.length, 'intents');
-            return result;
-          });
-
-          console.log('✅ Database payments loaded as intents');
-        }
-      }
+      return { hash: null, solverAddress: null };
     } catch (error) {
-      console.error('Error loading database payments as intents:', error);
+      console.error('Error fetching recent transaction hash:', error);
+      return { hash: null, solverAddress: null };
     }
   };
-
 
   const handleViewTransactionHistory = async () => {
     if (!address) {
@@ -1001,11 +980,10 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
             </div>
           ) : (
             <>
-              {/* Payment Groups Section */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {groups.map((group, index) => (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {groups.map((group, index) => (
                   <GroupCard
-                  key={group.id}
+                    key={group.id}
                     group={group}
                     index={index}
                     isProcessingPayment={isProcessingPayment}
@@ -1013,10 +991,9 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
                     onEdit={(groupId) => navigate(`/admin/edit-group/${groupId}`)}
                     onPayAll={handlePayAllEmployees}
                   />
-              ))}
+                ))}
               </div>
 
-              {/* User Intents Section */}
               <IntentsSection
                 userIntents={userIntents}
                 allUserIntents={allUserIntents}
@@ -1025,7 +1002,6 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
                 onRefresh={() => fetchUserIntents(1)}
                 onToggleShowAll={handleShowAllIntents}
               />
-
             </>
           )}
         </motion.div>
@@ -1033,149 +1009,316 @@ const fetchUserIntents = async (page: number = 1, loadAll: boolean = false) => {
 
       {/* Payment Progress Overlay */}
       {paymentProgress.isVisible && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 shadow-2xl">
-            <div className="text-center">
-              {/* Spinner */}
-              <div className="w-16 h-16 mx-auto mb-4 relative">
-                <div className="absolute inset-0 border-4 border-blue-200 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
-              </div>
-              
-              {/* Status Icon */}
-              <div className="mb-4">
-                {paymentProgress.status === 'simulating' && (
-                  <div className="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-blue-500 rounded-full animate-pulse"></div>
-                  </div>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-gradient-to-br from-purple-900/50 via-blue-900/50 to-cyan-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        >
+          <motion.div 
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            className="bg-gradient-to-br from-white/95 to-purple-50/95 rounded-2xl p-8 max-w-3xl w-full mx-4 shadow-2xl border border-white/20"
+          >
+            {/* Header with Chain & Token Info */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <motion.div 
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="flex items-center gap-3"
+                >
+                  {/* Source Chain */}
+                  {getChainDisplayInfo(paymentProgress.sourceChain) && (
+                    <div className="flex flex-col items-center">
+                      <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${getChainDisplayInfo(paymentProgress.sourceChain)!.gradient} flex items-center justify-center shadow-lg`}>
+                        {getChainDisplayInfo(paymentProgress.sourceChain)!.logo}
+                      </div>
+                      <span className="text-xs font-medium text-gray-600 mt-1">{getChainDisplayInfo(paymentProgress.sourceChain)!.name}</span>
+                    </div>
+                  )}
+
+                  {/* Animated Arrow */}
+                  {getChainDisplayInfo(paymentProgress.sourceChain) && getChainDisplayInfo(paymentProgress.destinationChain) && (
+                    <motion.div 
+                      animate={{ x: [0, 10, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.5 }}
+                      className="flex items-center gap-1"
+                    >
+                      <div className="h-px w-12 bg-gradient-to-r from-purple-400 to-blue-500"></div>
+                      <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </motion.div>
+                  )}
+
+                  {/* Destination Chain */}
+                  {getChainDisplayInfo(paymentProgress.destinationChain) && (
+                    <div className="flex flex-col items-center">
+                      <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${getChainDisplayInfo(paymentProgress.destinationChain)!.gradient} flex items-center justify-center shadow-lg`}>
+                        {getChainDisplayInfo(paymentProgress.destinationChain)!.logo}
+                      </div>
+                      <span className="text-xs font-medium text-gray-600 mt-1">{getChainDisplayInfo(paymentProgress.destinationChain)!.name}</span>
+                    </div>
+                  )}
+                </motion.div>
+
+                {/* Token Info */}
+                {getTokenDisplayInfo(paymentProgress.token) && (
+                  <motion.div 
+                    initial={{ x: 20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-purple-200/50"
+                  >
+                    <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${getTokenDisplayInfo(paymentProgress.token)!.gradient} flex items-center justify-center shadow-md`}>
+                      {getTokenDisplayInfo(paymentProgress.token)!.logo}
+                    </div>
+                    <span className="text-sm font-semibold gradient-text">{paymentProgress.amount} {paymentProgress.token}</span>
+                  </motion.div>
                 )}
-                {paymentProgress.status === 'signing' && (
-                  <div className="w-12 h-12 mx-auto bg-yellow-100 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-yellow-500 rounded-full animate-bounce"></div>
-                  </div>
-                )}
-                {paymentProgress.status === 'confirming' && (
-                  <div className="w-12 h-12 mx-auto bg-orange-100 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-orange-500 rounded-full animate-pulse"></div>
-                  </div>
-                )}
-                {paymentProgress.status === 'saving' && (
-                  <div className="w-12 h-12 mx-auto bg-purple-100 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-purple-500 rounded-full animate-pulse"></div>
-                  </div>
-                )}
-                {paymentProgress.status === 'complete' && (
-                  <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-green-500 rounded-full">✓</div>
-                  </div>
-                )}
-                {paymentProgress.status === 'error' && (
-                  <div className="w-12 h-12 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-                    <div className="w-6 h-6 bg-red-500 rounded-full">✗</div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Progress Text */}
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {paymentProgress.status === 'complete' ? 'Payment Complete!' : 
-                 paymentProgress.status === 'error' ? 'Payment Failed' : 
-                 'Processing Payment...'}
-              </h3>
-              
-              <p className="text-sm text-gray-600 mb-4">
-                {paymentProgress.currentStep}
-              </p>
-              
-              {/* Employee Info */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Employee:</span> {paymentProgress.employeeName}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Amount:</span> {paymentProgress.amount}
-                </p>
               </div>
 
-              {/* Signature Progress */}
-              {paymentProgress.totalSignatures > 0 && (
-                <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-blue-900">Signature Progress</span>
-                    <span className="text-sm text-blue-700">
-                      {paymentProgress.signatureStep} of {paymentProgress.totalSignatures}
-                    </span>
-                  </div>
-                  
-                  {/* Signature Steps */}
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((step) => (
-                      <div key={step} className="flex items-center space-x-3">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                          step <= paymentProgress.signatureStep 
-                            ? 'bg-green-500 text-white' 
-                            : step === paymentProgress.signatureStep + 1 && paymentProgress.status === 'signing'
-                            ? 'bg-yellow-500 text-white animate-pulse'
-                            : 'bg-gray-200 text-gray-500'
-                        }`}>
-                          {step <= paymentProgress.signatureStep ? '✓' : step}
-                        </div>
-                        <div className="flex-1">
-                          <p className={`text-xs ${
-                            step <= paymentProgress.signatureStep 
-                              ? 'text-green-700 font-medium' 
-                              : step === paymentProgress.signatureStep + 1 && paymentProgress.status === 'signing'
-                              ? 'text-yellow-700 font-medium'
-                              : 'text-gray-500'
-                          }`}>
-                            {step === 1 && 'Token Allowance'}
-                            {step === 2 && 'Deposit to Solver'}
-                            {step === 3 && 'Direct Transfer to Employee'}
-                          </p>
-                          {step === paymentProgress.signatureStep && paymentProgress.status === 'signing' && (
-                            <p className="text-xs text-yellow-600 mt-1">
-                              {paymentProgress.signatureDescription}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Status Header */}
+              <motion.h3 
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-2xl font-bold gradient-text text-center mb-2"
+              >
+                {paymentProgress.status === 'complete' ? '🎉 Payment Complete!' : 
+                 paymentProgress.status === 'error' ? '❌ Payment Failed' : 
+                 '⚡ Processing Payment...'}
+              </motion.h3>
               
-              {/* Progress Bar */}
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                <div 
-                  className={`h-2 rounded-full transition-all duration-500 ${
-                    paymentProgress.status === 'complete' ? 'bg-green-500 w-full' :
-                    paymentProgress.status === 'error' ? 'bg-red-500 w-full' :
-                    paymentProgress.status === 'signing' ? 
-                      `bg-yellow-500 w-${Math.round((paymentProgress.signatureStep / paymentProgress.totalSignatures) * 100)}` :
-                    paymentProgress.status === 'confirming' ? 'bg-orange-500 w-90' :
-                    paymentProgress.status === 'saving' ? 'bg-purple-500 w-95' :
-                    'bg-blue-500 w-25'
-                  }`}
-                  style={{
-                    width: paymentProgress.status === 'signing' 
-                      ? `${Math.round((paymentProgress.signatureStep / paymentProgress.totalSignatures) * 100)}%`
-                      : undefined
+              <motion.p 
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-sm text-gray-600 text-center"
+              >
+                {paymentProgress.currentStep}
+              </motion.p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Left Column - Employee Info & Status */}
+              <div className="space-y-4">
+                {/* Employee Info */}
+                <motion.div 
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                  className="glass-card p-4 rounded-xl border border-white/20"
+                >
+                  <h4 className="text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wide">Recipient Details</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">{paymentProgress.employeeName.charAt(0)}</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">{paymentProgress.employeeName}</p>
+                        <p className="text-xs text-gray-500">Employee</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Animated Status Icon */}
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.5, type: "spring" }}
+                  className="flex justify-center"
+                >
+                  {paymentProgress.status === 'simulating' && (
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg relative">
+                      <motion.div 
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                        className="absolute inset-0 border-4 border-transparent border-t-white rounded-full"
+                      ></motion.div>
+                      <span className="text-2xl">⚙️</span>
+                    </div>
+                  )}
+                  {paymentProgress.status === 'signing' && (
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg">
+                      <motion.span 
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ repeat: Infinity, duration: 1 }}
+                        className="text-2xl"
+                      >✍️</motion.span>
+                    </div>
+                  )}
+                  {paymentProgress.status === 'confirming' && (
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-lg">
+                      <motion.span 
+                        animate={{ rotate: [0, 360] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        className="text-2xl"
+                      >🔄</motion.span>
+                    </div>
+                  )}
+                  {paymentProgress.status === 'saving' && (
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center shadow-lg">
+                      <motion.span 
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ repeat: Infinity, duration: 1.5 }}
+                        className="text-2xl"
+                      >💾</motion.span>
+                    </div>
+                  )}
+                  {paymentProgress.status === 'complete' && (
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: [0, 1.2, 1] }}
+                      transition={{ duration: 0.5 }}
+                      className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg"
+                    >
+                      <span className="text-3xl">✓</span>
+                    </motion.div>
+                  )}
+                  {paymentProgress.status === 'error' && (
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center shadow-lg">
+                      <span className="text-3xl">✗</span>
+                    </div>
+                  )}
+                </motion.div>
+              </div>
+
+              {/* Right Column - Signature Progress */}
+              <div className="space-y-4">
+                {paymentProgress.totalSignatures > 0 && (
+                  <motion.div 
+                    initial={{ x: 20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="glass-card p-4 rounded-xl border border-white/20"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Signature Progress</h4>
+                      <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+                        {paymentProgress.signatureStep} / {paymentProgress.totalSignatures}
+                      </span>
+                    </div>
+                    
+                    {/* Signature Steps */}
+                    <div className="space-y-3">
+                      {[
+                        { step: 1, label: 'Token Allowance', icon: '🔓' },
+                        { step: 2, label: 'Deposit to Solver', icon: '💰' },
+                        { step: 3, label: 'Direct Transfer', icon: '📤' }
+                      ].map(({ step, label, icon }) => (
+                        <motion.div 
+                          key={step}
+                          initial={{ x: 20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.5 + (step * 0.1) }}
+                          className={`flex items-center space-x-3 p-3 rounded-lg transition-all ${
+                            step <= paymentProgress.signatureStep 
+                              ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200' 
+                              : step === paymentProgress.signatureStep + 1 && paymentProgress.status === 'signing'
+                              ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 animate-pulse'
+                              : 'bg-gray-50 border border-gray-200'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                            step <= paymentProgress.signatureStep 
+                              ? 'bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-md' 
+                              : step === paymentProgress.signatureStep + 1 && paymentProgress.status === 'signing'
+                              ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-md'
+                              : 'bg-gray-200 text-gray-500'
+                          }`}>
+                            {step <= paymentProgress.signatureStep ? '✓' : icon}
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium ${
+                              step <= paymentProgress.signatureStep 
+                                ? 'text-green-700' 
+                                : step === paymentProgress.signatureStep + 1 && paymentProgress.status === 'signing'
+                                ? 'text-yellow-700'
+                                : 'text-gray-500'
+                            }`}>
+                              {label}
+                            </p>
+                            {step === paymentProgress.signatureStep && paymentProgress.status === 'signing' && (
+                              <motion.p 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="text-xs text-yellow-600 mt-1"
+                              >
+                                {paymentProgress.signatureDescription}
+                              </motion.p>
+                            )}
+                          </div>
+                          {step <= paymentProgress.signatureStep && (
+                            <motion.div 
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="text-green-500"
+                            >
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            </motion.div>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="mt-6"
+            >
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ 
+                    width: paymentProgress.status === 'complete' ? '100%' :
+                          paymentProgress.status === 'error' ? '100%' :
+                          paymentProgress.status === 'signing' ? 
+                            `${Math.round((paymentProgress.signatureStep / paymentProgress.totalSignatures) * 100)}%` :
+                          paymentProgress.status === 'confirming' ? '90%' :
+                          paymentProgress.status === 'saving' ? '95%' :
+                          '25%'
                   }}
-                ></div>
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className={`h-3 rounded-full transition-all duration-500 ${
+                    paymentProgress.status === 'complete' ? 'bg-gradient-to-r from-green-400 to-emerald-600' :
+                    paymentProgress.status === 'error' ? 'bg-gradient-to-r from-red-400 to-red-600' :
+                    paymentProgress.status === 'signing' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
+                    paymentProgress.status === 'confirming' ? 'bg-gradient-to-r from-orange-400 to-red-500' :
+                    paymentProgress.status === 'saving' ? 'bg-gradient-to-r from-purple-400 to-purple-600' :
+                    'bg-gradient-to-r from-blue-400 to-blue-600'
+                  }`}
+                />
               </div>
               
               {/* Status Message */}
-              <p className="text-xs text-gray-500">
-                {paymentProgress.status === 'signing' && `Signature ${paymentProgress.signatureStep}: ${paymentProgress.signatureDescription}`}
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7 }}
+                className="text-xs text-center text-gray-500 mt-3"
+              >
+                {paymentProgress.status === 'signing' && `Step ${paymentProgress.signatureStep}: ${paymentProgress.signatureDescription}`}
                 {paymentProgress.status === 'confirming' && 'All signatures complete, waiting for blockchain confirmation...'}
                 {paymentProgress.status === 'saving' && 'Saving payment details to database...'}
-                {paymentProgress.status === 'complete' && 'Payment has been successfully processed!'}
+                {paymentProgress.status === 'complete' && getChainDisplayInfo(paymentProgress.sourceChain) && getChainDisplayInfo(paymentProgress.destinationChain) && `Payment has been successfully processed from ${getChainDisplayInfo(paymentProgress.sourceChain)!.name} to ${getChainDisplayInfo(paymentProgress.destinationChain)!.name}! 🎉`}
                 {paymentProgress.status === 'error' && 'An error occurred during payment processing'}
-                {paymentProgress.status === 'simulating' && 'Preparing cross-chain transaction...'}
-              </p>
-            </div>
-          </div>
-        </div>
+                {paymentProgress.status === 'simulating' && getChainDisplayInfo(paymentProgress.sourceChain) && getChainDisplayInfo(paymentProgress.destinationChain) && `Preparing cross-chain transaction from ${getChainDisplayInfo(paymentProgress.sourceChain)!.name} to ${getChainDisplayInfo(paymentProgress.destinationChain)!.name}...`}
+              </motion.p>
+            </motion.div>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   );

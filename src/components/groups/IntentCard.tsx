@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Receipt, ArrowRight, Copy, ExternalLink } from "lucide-react";
+import { Receipt, ArrowRight, Copy, ExternalLink, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileService } from "@/lib/profileService";
 import { useState, useEffect } from "react";
@@ -111,7 +111,7 @@ export function IntentCard({ intent, index }: IntentCardProps) {
   return (
     <Card key={intent.intentId || index} className="glass-card p-6">
       <div className="space-y-6">
-        {/* Intent Header */}
+        {/* Intent Header with View Intent Button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className={`p-2 rounded-lg ${
@@ -124,7 +124,18 @@ export function IntentCard({ intent, index }: IntentCardProps) {
               }`} />
             </div>
             <div>
-              <p className="font-medium text-lg">Payment Intent #{intent.intentId}</p>
+              <div className="flex items-center gap-3">
+                <p className="font-medium text-lg">Payment Intent #{intent.intentId}</p>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-7 px-3 text-xs bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-600 text-white"
+                  onClick={() => window.open(`https://explorer.nexus-folly.availproject.org/intent/${intent.intentId}`, '_blank')}
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  View Intent
+                </Button>
+              </div>
               <p className="text-sm text-muted-foreground">
                 {new Date(intent.timestamp * 1000).toLocaleDateString()} • {intent.sourceChain} → {intent.destChain}
                 {paymentData && (
@@ -148,7 +159,6 @@ export function IntentCard({ intent, index }: IntentCardProps) {
             )}
           </div>
         </div>
-
 
         {/* Complete Payment Flow */}
         <div className="space-y-4">
@@ -175,7 +185,7 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                 <div className="space-y-3 text-sm">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <span className="text-muted-foreground">From Sender:</span>
+                      <span className="text-muted-foreground">From Employer:</span>
                       {intent.sender ? (
                         <div className="flex items-center gap-1">
                           <p className="font-mono text-xs break-all">
@@ -248,27 +258,20 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                     <div className="pt-2 border-t border-blue-200/50">
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground text-xs">Deposit TX:</span>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="link"
-                            className="h-auto p-0 text-xs"
-                            onClick={() => window.open(`https://explorer.nexus-folly.availproject.org/intent/${intent.intentId}`, '_blank')}
-                          >
-                            View Intent
-                          </Button>
-                          <Button
-                            variant="link"
-                            className="h-auto p-0 text-xs"
-                            onClick={() => window.open(
-                              getBlockscoutUrl(intent.sourceChainId, undefined, paymentData?.first_tx_hash || intent.senderToSolverHash), 
-                              '_blank'
-                            )}
-                          >
-                            View TX
-                          </Button>
-                        </div>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="h-7 px-3 text-xs bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                          onClick={() => window.open(
+                            getBlockscoutUrl(intent.sourceChainId, undefined, paymentData?.first_tx_hash || intent.senderToSolverHash), 
+                            '_blank'
+                          )}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          View TX
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 mt-1">
                         <p className="font-mono text-xs break-all">
                           {(paymentData?.first_tx_hash || intent.senderToSolverHash).slice(0, 10)}...{(paymentData?.first_tx_hash || intent.senderToSolverHash).slice(-8)}
                         </p>
@@ -375,8 +378,9 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground text-xs">Solver TX:</span>
                         <Button
-                          variant="link"
-                          className="h-auto p-0 text-xs"
+                          variant="default"
+                          size="sm"
+                          className="h-7 px-3 text-xs bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white"
                           onClick={async () => {
                             const txHash = paymentData?.solver_to_employer_hash || intent.solverToReceiverHash;
                             console.log('Step 2 TX Hash:', txHash, 'Length:', txHash?.length);
@@ -463,10 +467,11 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                             }
                           }}
                         >
+                          <ExternalLink className="h-3 w-3 mr-1" />
                           View TX
                         </Button>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 mt-1">
                         <p className="font-mono text-xs break-all">
                           {(paymentData?.solver_to_employer_hash || intent.solverToReceiverHash).slice(0, 10)}...{(paymentData?.solver_to_employer_hash || intent.solverToReceiverHash).slice(-8)}
                         </p>
@@ -576,17 +581,19 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground text-xs">Final TX:</span>
                         <Button
-                          variant="link"
-                          className="h-auto p-0 text-xs"
+                          variant="default"
+                          size="sm"
+                          className="h-7 px-3 text-xs bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
                           onClick={() => window.open(
                             getBlockscoutUrl(intent.destinationChainId, undefined, paymentData?.tx_hash || intent.solverToReceiverHash), 
                             '_blank'
                           )}
                         >
+                          <ExternalLink className="h-3 w-3 mr-1" />
                           View TX
                         </Button>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 mt-1">
                         <p className="font-mono text-xs break-all">
                           {(paymentData?.tx_hash || intent.solverToReceiverHash).slice(0, 10)}...{(paymentData?.tx_hash || intent.solverToReceiverHash).slice(-8)}
                         </p>
