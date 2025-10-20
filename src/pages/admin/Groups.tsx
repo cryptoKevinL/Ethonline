@@ -508,26 +508,8 @@ const Groups = () => {
           
           const depositSolverAddress = recentTxData.solverAddress || '';
           
-          // Find solver → employer transaction hash
+          // Initialize solver → employer hash (will be found after payment)
           let solverToEmployerHash = '';
-          try {
-            const chainName = getChainName(destinationChainId);
-            if (chainName && address) {
-              console.log(`🔍 Searching for solver → employer transaction on ${chainName}...`);
-              const internalResponse = await fetch(`https://${chainName}.blockscout.com/api/v2/addresses/${address}/internal-transactions`);
-              if (internalResponse.ok) {
-                const internalData = await internalResponse.json();
-                if (internalData.items && internalData.items.length > 0) {
-                  // Take the first (most recent) internal transaction
-                  const employerTx = internalData.items[0];
-                  solverToEmployerHash = employerTx.transaction_hash || '';
-                  console.log('✅ Found solver → employer transaction (internal):', solverToEmployerHash);
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Error finding solver → employer transaction:', error);
-          }
           
           console.log('Extracted intent ID:', intentId);
           console.log('First transaction hash (deposit):', firstTxHash);
@@ -573,6 +555,36 @@ const Groups = () => {
 
           if (paymentResult.success) {
             console.log('Payment saved to database:', paymentResult.data);
+            
+            // Now find the solver → employer transaction hash after payment is complete
+            try {
+              console.log('🔍 Searching for solver → employer transaction after payment completion...');
+              const chainName = getChainName(destinationChainId);
+              if (chainName && address) {
+                const internalResponse = await fetch(`https://${chainName}.blockscout.com/api/v2/addresses/${address}/internal-transactions`);
+                if (internalResponse.ok) {
+                  const internalData = await internalResponse.json();
+                  if (internalData.items && internalData.items.length > 0) {
+                    // Take the first (most recent) internal transaction
+                    const employerTx = internalData.items[0];
+                    solverToEmployerHash = employerTx.transaction_hash || '';
+                    console.log('✅ Found solver → employer transaction (internal):', solverToEmployerHash);
+                    
+                    // Update the payment record with the solver → employer hash
+                    try {
+                      await ProfileService.updatePaymentSolverHash(finalIntentId, solverToEmployerHash);
+                      console.log('✅ Updated payment record with solver → employer hash');
+                    } catch (updateError) {
+                      console.error('Error updating payment with solver hash:', updateError);
+                    }
+                  } else {
+                    console.log('❌ No internal transactions found');
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error finding solver → employer transaction:', error);
+            }
           }
         } catch (dbError) {
           console.error('Error saving payment to database:', dbError);

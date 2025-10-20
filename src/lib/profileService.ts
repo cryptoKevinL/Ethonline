@@ -1948,6 +1948,27 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
     }
   }
 
+  static async updatePaymentSolverHash(intentId: string, solverToEmployerHash: string) {
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .update({ solver_to_employer_hash: solverToEmployerHash })
+        .eq('intent_id', intentId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase error updating payment solver hash:', error);
+        throw error;
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error updating payment solver hash:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // Get payments for an employer
   static async getEmployerPayments(employerId: string, limit: number = 50) {
     try {
