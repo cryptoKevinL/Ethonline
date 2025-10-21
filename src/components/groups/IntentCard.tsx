@@ -385,7 +385,17 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                     <p className="text-yellow-800 font-medium">Solver Action:</p>
                     <p className="text-yellow-700">Sends {intent.destCurrency} back to employer on {intent.destChain}</p>
                   </div>
-                  {(paymentData?.solver_to_employer_hash || intent.solverToReceiverHash) && (
+                  {effectiveStatus === 'FAILED' ? (
+                    <div className="pt-2 border-t border-red-200/50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-xs">Status:</span>
+                        <Badge variant="destructive" className="bg-red-100 text-red-700">
+                          FAILED
+                        </Badge>
+                      </div>
+                      <p className="text-red-600 text-xs mt-1">Solver transaction failed - no hash available</p>
+                    </div>
+                  ) : (paymentData?.solver_to_employer_hash || intent.solverToReceiverHash) ? (
                     <div className="pt-2 border-t border-yellow-200/50">
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground text-xs">Solver TX:</span>
@@ -497,6 +507,16 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                         </Button>
                       </div>
                     </div>
+                  ) : (
+                    <div className="pt-2 border-t border-yellow-200/50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-xs">Status:</span>
+                        <Badge variant="outline" className="bg-yellow-100 text-yellow-700">
+                          PENDING
+                        </Badge>
+                      </div>
+                      <p className="text-yellow-600 text-xs mt-1">Solver transaction hash not yet available</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -588,7 +608,17 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                     <p className="text-green-800 font-medium">Employer Action:</p>
                     <p className="text-green-700">Sends {intent.destCurrency} directly to employee on {intent.destChain}</p>
                   </div>
-                  {(paymentData?.tx_hash || intent.solverToReceiverHash) && (
+                  {effectiveStatus === 'FAILED' ? (
+                    <div className="pt-2 border-t border-red-200/50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-xs">Status:</span>
+                        <Badge variant="destructive" className="bg-red-100 text-red-700">
+                          FAILED
+                        </Badge>
+                      </div>
+                      <p className="text-red-600 text-xs mt-1">Transaction failed - no hash available</p>
+                    </div>
+                  ) : (paymentData?.tx_hash || intent.solverToReceiverHash) ? (
                     <div className="pt-2 border-t border-green-200/50">
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground text-xs">Final TX:</span>
@@ -618,6 +648,16 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                           <Copy className="h-3 w-3" />
                         </Button>
                       </div>
+                    </div>
+                  ) : (
+                    <div className="pt-2 border-t border-yellow-200/50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-xs">Status:</span>
+                        <Badge variant="outline" className="bg-yellow-100 text-yellow-700">
+                          PENDING
+                        </Badge>
+                      </div>
+                      <p className="text-yellow-600 text-xs mt-1">Transaction hash not yet available</p>
                     </div>
                   )}
                 </div>

@@ -54,7 +54,8 @@ const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
-    return;
+    // Clear existing timeout to prevent memory leaks
+    clearTimeout(toastTimeouts.get(toastId)!);
   }
 
   const timeout = setTimeout(() => {
