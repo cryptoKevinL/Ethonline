@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, X, Building2, Users, Loader2 } from "lucide-react";
+import { Plus, Search, X, Building2, Users, Loader2, Clock, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileService } from "@/lib/profileService";
 
@@ -18,6 +18,8 @@ interface Employee {
   wallet_address: string;
   chain: string;
   token: string;
+  secondary_chain?: string;
+  secondary_token?: string;
   payment: string;
 }
 
@@ -29,6 +31,8 @@ interface SearchResult {
   wallet_address: string;
   chain: string;
   token: string;
+  secondary_chain?: string;
+  secondary_token?: string;
 }
 
 interface Company {
@@ -53,8 +57,16 @@ const CreateGroup = () => {
     name: "", 
     payment: "",
     chain: "",
-    token: ""
+    token: "",
+    secondary_chain: "",
+    secondary_token: ""
   });
+  
+  // Payment schedule state
+  const [paymentFrequency, setPaymentFrequency] = useState("");
+  const [paymentStartDate, setPaymentStartDate] = useState("");
+  const [paymentEndDate, setPaymentEndDate] = useState("");
+  const [paymentDayOfWeek, setPaymentDayOfWeek] = useState("");
 
   // Load companies on component mount
   useEffect(() => {
@@ -142,7 +154,9 @@ const CreateGroup = () => {
       name: `${employee.first_name} ${employee.last_name}`,
       payment: "",
       chain: employee.chain,
-      token: employee.token
+      token: employee.token,
+      secondary_chain: employee.secondary_chain || "",
+      secondary_token: employee.secondary_token || ""
     });
     
     // Clear search results
@@ -165,9 +179,11 @@ const CreateGroup = () => {
         wallet_address: newEmployee.address,
         chain: newEmployee.chain,
         token: newEmployee.token,
+        secondary_chain: newEmployee.secondary_chain,
+        secondary_token: newEmployee.secondary_token,
         payment: newEmployee.payment
       }]);
-      setNewEmployee({ address: "", name: "", payment: "", chain: "", token: "" });
+      setNewEmployee({ address: "", name: "", payment: "", chain: "", token: "", secondary_chain: "", secondary_token: "" });
       toast({
         title: "Employee Added",
         description: `${newEmployee.name} has been added to the group.`,
@@ -224,8 +240,14 @@ const CreateGroup = () => {
           wallet_address: emp.wallet_address,
           chain: emp.chain,
           token: emp.token,
+          secondary_chain: emp.secondary_chain,
+          secondary_token: emp.secondary_token,
           payment: emp.payment || "0" // Use the payment from each employee
-        }))
+        })),
+        payment_frequency: paymentFrequency,
+        payment_start_date: paymentStartDate,
+        payment_end_date: paymentEndDate,
+        payment_day_of_week: paymentDayOfWeek
       });
 
       if (result.success) {
@@ -237,8 +259,12 @@ const CreateGroup = () => {
         // Reset form
         setGroupName("");
         setEmployees([]);
-        setNewEmployee({ address: "", name: "", payment: "", chain: "", token: "" });
+        setNewEmployee({ address: "", name: "", payment: "", chain: "", token: "", secondary_chain: "", secondary_token: "" });
         setSelectedCompanyId("");
+        setPaymentFrequency("");
+        setPaymentStartDate("");
+        setPaymentEndDate("");
+        setPaymentDayOfWeek("");
       } else {
         throw new Error(result.error || "Failed to create group");
       }
@@ -312,6 +338,90 @@ const CreateGroup = () => {
                 onChange={(e) => setGroupName(e.target.value)}
                 className="glass-card border-white/20 text-lg"
               />
+            </div>
+          </Card>
+
+          {/* Payment Schedule */}
+          <Card className="glass-card p-8 hover-lift">
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-bold">Payment Schedule</h2>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Payment Frequency</Label>
+                    <Select value={paymentFrequency} onValueChange={setPaymentFrequency}>
+                      <SelectTrigger className="glass-card border-white/20">
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="annual">Annual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Day of Week</Label>
+                    <Select value={paymentDayOfWeek} onValueChange={setPaymentDayOfWeek}>
+                      <SelectTrigger className="glass-card border-white/20">
+                        <SelectValue placeholder="Select day" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monday">Monday</SelectItem>
+                        <SelectItem value="tuesday">Tuesday</SelectItem>
+                        <SelectItem value="wednesday">Wednesday</SelectItem>
+                        <SelectItem value="thursday">Thursday</SelectItem>
+                        <SelectItem value="friday">Friday</SelectItem>
+                        <SelectItem value="saturday">Saturday</SelectItem>
+                        <SelectItem value="sunday">Sunday</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Start Date</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="date"
+                        value={paymentStartDate}
+                        onChange={(e) => setPaymentStartDate(e.target.value)}
+                        className="glass-card border-white/20 pl-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">End Date (Optional)</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="date"
+                        value={paymentEndDate}
+                        onChange={(e) => setPaymentEndDate(e.target.value)}
+                        className="glass-card border-white/20 pl-10"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200/50">
+                <p className="text-sm text-blue-800">
+                  <strong>Auto Payment Schedule:</strong> Employees will be paid automatically based on the selected frequency and day of week. 
+                  The start date determines when payments begin, and the end date (if set) determines when they stop.
+                </p>
+              </div>
             </div>
           </Card>
 
@@ -449,15 +559,29 @@ const CreateGroup = () => {
                 </div>
                 <div className="grid md:grid-cols-2 gap-4 mt-4">
                   <Input
-                    placeholder="Chain (e.g., ethereum)"
+                    placeholder="Primary Chain (e.g., ethereum)"
                     value={newEmployee.chain}
                     onChange={(e) => setNewEmployee({ ...newEmployee, chain: e.target.value })}
                     className="glass-card border-white/20"
                   />
                   <Input
-                    placeholder="Token (e.g., usdc)"
+                    placeholder="Primary Token (e.g., usdc)"
                     value={newEmployee.token}
                     onChange={(e) => setNewEmployee({ ...newEmployee, token: e.target.value })}
+                    className="glass-card border-white/20"
+                  />
+                </div>
+                <div className="grid md:grid-cols-2 gap-4 mt-4">
+                  <Input
+                    placeholder="Secondary Chain (optional)"
+                    value={newEmployee.secondary_chain}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, secondary_chain: e.target.value })}
+                    className="glass-card border-white/20"
+                  />
+                  <Input
+                    placeholder="Secondary Token (optional)"
+                    value={newEmployee.secondary_token}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, secondary_token: e.target.value })}
                     className="glass-card border-white/20"
                   />
                 </div>
@@ -503,12 +627,17 @@ const CreateGroup = () => {
                           </div>
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Chain</div>
-                          <div className="text-sm">{emp.chain}</div>
+                          <div className="text-xs text-muted-foreground mb-1">Primary Chain/Token</div>
+                          <div className="text-sm">{emp.chain} • {emp.token}</div>
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Token</div>
-                          <div className="text-sm">{emp.token}</div>
+                          <div className="text-xs text-muted-foreground mb-1">Secondary Chain/Token</div>
+                          <div className="text-sm">
+                            {emp.secondary_chain && emp.secondary_token 
+                              ? `${emp.secondary_chain} • ${emp.secondary_token}` 
+                              : 'Not set'
+                            }
+                          </div>
                         </div>
                       </div>
                       <Button

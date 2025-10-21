@@ -48,8 +48,8 @@ export interface Wallet {
   employment_id: string
   chain: string
   token: string
-  token_contract?: string
-  token_decimals?: number
+  secondary_chain_preference?: string
+  secondary_token_preference?: string
   account_address: string
   is_default: boolean
   created_at?: string
@@ -91,4 +91,6 @@ export interface EmployeeProfileData {
   wallet_address: string
   preferred_chain: string
   preferred_token: string
+  secondary_chain?: string
+  secondary_token?: string
 }

@@ -74,6 +74,15 @@ export function IntentCard({ intent, index }: IntentCardProps) {
   const { toast } = useToast();
   const [paymentData, setPaymentData] = useState<any>(null);
   const [isLoadingPaymentData, setIsLoadingPaymentData] = useState(false);
+  
+  // Determine the effective status based on payment data availability
+  const getEffectiveStatus = () => {
+    if (isLoadingPaymentData) return 'PENDING';
+    if (!paymentData && !isLoadingPaymentData) return 'FAILED';
+    return intent.status;
+  };
+  
+  const effectiveStatus = getEffectiveStatus();
 
   // Fetch payment data from database using intent ID
   useEffect(() => {
@@ -115,12 +124,14 @@ export function IntentCard({ intent, index }: IntentCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className={`p-2 rounded-lg ${
-              intent.status === 'SUCCESS' ? 'bg-green-500/20' : 
-              intent.status === 'PENDING' ? 'bg-yellow-500/20' : 'bg-blue-500/20'
+              effectiveStatus === 'SUCCESS' ? 'bg-green-500/20' : 
+              effectiveStatus === 'PENDING' ? 'bg-yellow-500/20' : 
+              effectiveStatus === 'FAILED' ? 'bg-red-500/20' : 'bg-blue-500/20'
             }`}>
               <Receipt className={`h-5 w-5 ${
-                intent.status === 'SUCCESS' ? 'text-green-600' : 
-                intent.status === 'PENDING' ? 'text-yellow-600' : 'text-blue-600'
+                effectiveStatus === 'SUCCESS' ? 'text-green-600' : 
+                effectiveStatus === 'PENDING' ? 'text-yellow-600' : 
+                effectiveStatus === 'FAILED' ? 'text-red-600' : 'text-blue-600'
               }`} />
             </div>
             <div>
@@ -146,11 +157,12 @@ export function IntentCard({ intent, index }: IntentCardProps) {
           </div>
           <div className="text-right">
             <Badge className={`text-sm ${
-              intent.status === 'SUCCESS' ? 'bg-green-500/20 text-green-700' : 
-              intent.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-700' : 
+              effectiveStatus === 'SUCCESS' ? 'bg-green-500/20 text-green-700' : 
+              effectiveStatus === 'PENDING' ? 'bg-yellow-500/20 text-yellow-700' : 
+              effectiveStatus === 'FAILED' ? 'bg-red-500/20 text-red-700' : 
               'bg-blue-500/20 text-blue-700'
             }`}>
-              {intent.status}
+              {effectiveStatus}
             </Badge>
             {intent.sourceAmount && (
               <p className="text-xs text-muted-foreground mt-1">
@@ -350,7 +362,7 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground">
-                          {isLoadingPaymentData ? "Loading..." : "Not available"}
+                          {isLoadingPaymentData ? "Loading..." : effectiveStatus === 'FAILED' ? "FAILED" : "Not available"}
                         </p>
                       )}
                     </div>
@@ -553,7 +565,7 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground">
-                          {isLoadingPaymentData ? "Loading..." : "Not available"}
+                          {isLoadingPaymentData ? "Loading..." : effectiveStatus === 'FAILED' ? "FAILED" : "Not available"}
                         </p>
                       )}
                     </div>

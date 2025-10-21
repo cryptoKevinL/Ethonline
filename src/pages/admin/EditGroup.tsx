@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Search, Plus, Edit2, Trash2, Save, Loader2, Send, ExternalLink, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Search, Plus, Edit2, Trash2, Save, Loader2, Send, ExternalLink, X, Calendar, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 // Removed Blockscout SDK imports since we're using Supabase function instead
 import { ProfileService } from "@/lib/profileService";
@@ -21,6 +22,8 @@ interface Employee {
   wallet_address: string;
   chain: string;
   token: string;
+  secondary_chain?: string;
+  secondary_token?: string;
   payment_amount: string; // Changed to string for decimal precision
   payment_frequency: string;
   status: string;
@@ -46,6 +49,10 @@ interface GroupData {
   totalPayment: number;
   status: string;
   created_at: string;
+  payment_frequency?: string;
+  payment_start_date?: string;
+  payment_end_date?: string;
+  payment_day_of_week?: string;
 }
 
 const EditGroup = () => {
@@ -85,8 +92,16 @@ const EditGroup = () => {
     name: "", 
     payment: "", 
     chain: "", 
-    token: "" 
+    token: "",
+    secondary_chain: "",
+    secondary_token: ""
   });
+  
+  // Payment schedule state
+  const [paymentFrequency, setPaymentFrequency] = useState("");
+  const [paymentStartDate, setPaymentStartDate] = useState("");
+  const [paymentEndDate, setPaymentEndDate] = useState("");
+  const [paymentDayOfWeek, setPaymentDayOfWeek] = useState("");
 
   // Load group data on component mount
   useEffect(() => {
@@ -108,6 +123,11 @@ const EditGroup = () => {
           setGroupData(result.data);
           setGroupName(result.data.name);
           setEmployees(result.data.employees);
+          // Initialize payment schedule fields
+          setPaymentFrequency(result.data.payment_frequency || "");
+          setPaymentStartDate(result.data.payment_start_date || "");
+          setPaymentEndDate(result.data.payment_end_date || "");
+          setPaymentDayOfWeek(result.data.payment_day_of_week || "");
           console.log('Loaded group data:', result.data);
         } else {
           console.error('Failed to load group:', result.error);
@@ -352,6 +372,8 @@ const EditGroup = () => {
             wallet_address: newEmployee.address,
             chain: newEmployee.chain,
             token: newEmployee.token,
+            secondary_chain: newEmployee.secondary_chain,
+            secondary_token: newEmployee.secondary_token,
             payment: newEmployee.payment
           }
         });
@@ -364,7 +386,7 @@ const EditGroup = () => {
             setGroupData(groupResult.data);
           }
 
-          setNewEmployee({ address: "", name: "", payment: "", chain: "", token: "" });
+          setNewEmployee({ address: "", name: "", payment: "", chain: "", token: "", secondary_chain: "", secondary_token: "" });
           toast({
             title: "Employee Added",
             description: `${newEmployee.name} has been added to the group.`,
@@ -382,6 +404,38 @@ const EditGroup = () => {
       } finally {
         setIsSaving(false);
       }
+    }
+  };
+
+  const handleSavePaymentSchedule = async () => {
+    if (!groupData) return;
+    
+    setIsSaving(true);
+    try {
+      const result = await ProfileService.updatePaymentSchedule(groupData.id, {
+        payment_frequency: paymentFrequency,
+        payment_start_date: paymentStartDate,
+        payment_end_date: paymentEndDate || undefined,
+        payment_day_of_week: paymentDayOfWeek
+      });
+      
+      if (result.success) {
+        toast({
+          title: "Payment Schedule Updated",
+          description: "Payment schedule has been saved successfully.",
+        });
+      } else {
+        throw new Error(result.error || "Failed to update payment schedule");
+      }
+    } catch (error) {
+      console.error('Error saving payment schedule:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save payment schedule. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -462,6 +516,105 @@ const EditGroup = () => {
                 onChange={(e) => setGroupName(e.target.value)}
                 className="glass-card border-white/20 text-lg"
               />
+            </div>
+          </Card>
+
+          {/* Payment Schedule */}
+          <Card className="glass-card p-8 hover-lift">
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-bold">Payment Schedule</h2>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Payment Frequency</Label>
+                    <Select value={paymentFrequency} onValueChange={setPaymentFrequency}>
+                      <SelectTrigger className="glass-card border-white/20">
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="annual">Annual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Day of Week</Label>
+                    <Select value={paymentDayOfWeek} onValueChange={setPaymentDayOfWeek}>
+                      <SelectTrigger className="glass-card border-white/20">
+                        <SelectValue placeholder="Select day" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monday">Monday</SelectItem>
+                        <SelectItem value="tuesday">Tuesday</SelectItem>
+                        <SelectItem value="wednesday">Wednesday</SelectItem>
+                        <SelectItem value="thursday">Thursday</SelectItem>
+                        <SelectItem value="friday">Friday</SelectItem>
+                        <SelectItem value="saturday">Saturday</SelectItem>
+                        <SelectItem value="sunday">Sunday</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Start Date</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="date"
+                        value={paymentStartDate}
+                        onChange={(e) => setPaymentStartDate(e.target.value)}
+                        className="glass-card border-white/20 pl-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">End Date (Optional)</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="date"
+                        value={paymentEndDate}
+                        onChange={(e) => setPaymentEndDate(e.target.value)}
+                        className="glass-card border-white/20 pl-10"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200/50">
+                <p className="text-sm text-blue-800">
+                  <strong>Auto Payment Schedule:</strong> Employees will be paid automatically based on the selected frequency and day of week. 
+                  The start date determines when payments begin, and the end date (if set) determines when they stop.
+                </p>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleSavePaymentSchedule}
+                  disabled={isSaving || !paymentFrequency || !paymentStartDate || !paymentDayOfWeek}
+                  className="bg-gradient-to-r from-primary to-blue-500 hover:opacity-90"
+                >
+                  {isSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  {isSaving ? "Saving..." : "Save Schedule"}
+                </Button>
+              </div>
             </div>
           </Card>
 
@@ -576,15 +729,29 @@ const EditGroup = () => {
                 </div>
                 <div className="grid md:grid-cols-2 gap-4 mt-4">
                   <Input
-                    placeholder="Chain (e.g., ethereum)"
+                    placeholder="Primary Chain (e.g., ethereum)"
                     value={newEmployee.chain}
                     onChange={(e) => setNewEmployee({ ...newEmployee, chain: e.target.value })}
                     className="glass-card border-white/20"
                   />
                   <Input
-                    placeholder="Token (e.g., usdc)"
+                    placeholder="Primary Token (e.g., usdc)"
                     value={newEmployee.token}
                     onChange={(e) => setNewEmployee({ ...newEmployee, token: e.target.value })}
+                    className="glass-card border-white/20"
+                  />
+                </div>
+                <div className="grid md:grid-cols-2 gap-4 mt-4">
+                  <Input
+                    placeholder="Secondary Chain (optional)"
+                    value={newEmployee.secondary_chain}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, secondary_chain: e.target.value })}
+                    className="glass-card border-white/20"
+                  />
+                  <Input
+                    placeholder="Secondary Token (optional)"
+                    value={newEmployee.secondary_token}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, secondary_token: e.target.value })}
                     className="glass-card border-white/20"
                   />
                 </div>
@@ -631,7 +798,7 @@ const EditGroup = () => {
                     className="glass-card p-4 hover-lift"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="flex-1 grid grid-cols-4 gap-4">
+                      <div className="flex-1 grid grid-cols-5 gap-4">
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Address</div>
                           <div className="font-mono text-sm truncate" title={emp.wallet_address}>
@@ -646,8 +813,17 @@ const EditGroup = () => {
                           )}
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Chain/Token</div>
+                          <div className="text-xs text-muted-foreground mb-1">Primary Chain/Token</div>
                           <div className="text-sm">{emp.chain} • {emp.token}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Secondary Chain/Token</div>
+                          <div className="text-sm">
+                            {emp.secondary_chain && emp.secondary_token 
+                              ? `${emp.secondary_chain} • ${emp.secondary_token}` 
+                              : 'Not set'
+                            }
+                          </div>
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Payment</div>

@@ -74,7 +74,26 @@ const Landing = () => {
 
       {/* Wallet Connection in Top Right */}
       <div className="absolute top-6 right-6 z-20">
-        <ConnectKitButton />
+        <ConnectKitButton.Custom>
+          {({ isConnected, isConnecting, show, address, ensName }) => {
+            return (
+              <Button 
+                onClick={show}
+                className="bg-gradient-to-r from-primary to-blue-500 hover:opacity-90 transition-opacity"
+                disabled={isConnecting}
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                {isConnected ? (
+                  <span className="font-mono">
+                    {ensName || `${address?.slice(0, 6)}...${address?.slice(-4)}`}
+                  </span>
+                ) : (
+                  "Connect Wallet"
+                )}
+              </Button>
+            );
+          }}
+        </ConnectKitButton.Custom>
       </div>
 
       <div className="relative z-10 container mx-auto px-6 py-20">
@@ -113,7 +132,7 @@ const Landing = () => {
           >
             {/* Employee Card */}
             <ConnectKitButton.Custom>
-              {({ isConnected, show, truncatedAddress, ensName }) => (
+              {({ isConnected, isConnecting, show, address, ensName }) => (
                 <motion.div whileHover={{ scale: 1.03 }} className="h-full">
                   <Card 
                     className="glass-card p-8 h-full hover-lift cursor-pointer group" 
@@ -134,6 +153,8 @@ const Landing = () => {
                         </p>
                       </div>
                       <Button
+                        onClick={isConnected ? handleEmployeeClick : show}
+                        disabled={isConnecting}
                         className="w-full px-6 py-3 bg-gradient-to-r from-primary to-blue-500 text-white rounded-lg font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                       >
                         <Wallet className="h-4 w-4" />
@@ -147,7 +168,7 @@ const Landing = () => {
 
             {/* Admin Card */}
             <ConnectKitButton.Custom>
-              {({ isConnected, show, truncatedAddress, ensName }) => (
+              {({ isConnected, isConnecting, show, address, ensName }) => (
                 <motion.div whileHover={{ scale: 1.03 }} className="h-full">
                   <Card 
                     className="glass-card p-8 h-full hover-lift cursor-pointer group" 
@@ -168,6 +189,8 @@ const Landing = () => {
                         </p>
                       </div>
                       <Button
+                        onClick={isConnected ? handleAdminClick : show}
+                        disabled={isConnecting}
                         className="w-full px-6 py-3 bg-gradient-to-r from-primary to-cyan-500 text-white rounded-lg font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                       >
                         <Wallet className="h-4 w-4" />
