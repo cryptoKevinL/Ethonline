@@ -1421,7 +1421,8 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
       }
 
       // Get employment data with employer and employee details
-      const { data: employment, error: employmentError } = await supabase
+      // Since employees can have multiple employments, we'll get all active ones
+      const { data: employments, error: employmentError } = await supabase
         .from('employments')
         .select(`
           *,
@@ -1439,35 +1440,54 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
         `)
         .eq('employee_id', wallet.employee_id)
         .eq('status', 'active')
-        .maybeSingle();
+        .order('created_at', { ascending: false }); // Get most recent first
 
       if (employmentError) {
         throw employmentError;
       }
 
-      if (!employment) {
+      if (!employments || employments.length === 0) {
         return { success: true, data: null }; // No active employment found
       }
 
-      // Format the employment data
+      // If employee has multiple employments, we'll return the most recent one
+      // but also include information about other employments
+      const primaryEmployment = employments[0]; // Most recent employment
+      
+      // Format the primary employment data
       const employmentData = {
-        id: employment.id,
-        company: employment.employers.name,
-        companyEmail: employment.employers.email,
+        id: primaryEmployment.id,
+        company: primaryEmployment.employers.name,
+        companyEmail: primaryEmployment.employers.email,
         employee: {
-          id: employment.employees.id,
-          first_name: employment.employees.first_name,
-          last_name: employment.employees.last_name,
-          email: employment.employees.email
+          id: primaryEmployment.employees.id,
+          first_name: primaryEmployment.employees.first_name,
+          last_name: primaryEmployment.employees.last_name,
+          email: primaryEmployment.employees.email
         },
-        monthlyPayment: employment.payment_amount || 0,
-        paymentFrequency: employment.payment_frequency || 'monthly',
-        chain: employment.chain || 'ethereum',
-        token: employment.token || 'usdc',
-        status: employment.status,
-        role: employment.role,
-        created_at: employment.created_at,
-        updated_at: employment.updated_at
+        monthlyPayment: primaryEmployment.payment_amount || 0,
+        paymentFrequency: primaryEmployment.payment_frequency || 'monthly',
+        chain: primaryEmployment.chain || 'ethereum',
+        token: primaryEmployment.token || 'usdc',
+        status: primaryEmployment.status,
+        role: primaryEmployment.role,
+        created_at: primaryEmployment.created_at,
+        updated_at: primaryEmployment.updated_at,
+        // Include information about other employments if they exist
+        hasMultipleEmployments: employments.length > 1,
+        totalEmployments: employments.length,
+        otherEmployments: employments.slice(1).map(emp => ({
+          id: emp.id,
+          company: emp.employers.name,
+          companyEmail: emp.employers.email,
+          monthlyPayment: emp.payment_amount || 0,
+          paymentFrequency: emp.payment_frequency || 'monthly',
+          chain: emp.chain || 'ethereum',
+          token: emp.token || 'usdc',
+          status: emp.status,
+          role: emp.role,
+          created_at: emp.created_at
+        }))
       };
 
       return { success: true, data: employmentData };

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, Wallet, User, DollarSign, Loader2, QrCode, Copy, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { Save, Wallet, User, Loader2, QrCode, Copy, ExternalLink, Plus, Trash2, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileService } from "@/lib/profileService";
 import { useAccount } from "wagmi";
@@ -26,6 +26,7 @@ interface ProfileData {
   paymentPreferences: PaymentPreference[];
   secondaryPreferences: PaymentPreference[];
 }
+
 
 const Profile = () => {
   const { toast } = useToast();
@@ -149,6 +150,7 @@ const Profile = () => {
 
     loadProfile();
   }, [address, isConnected]);
+
 
   // Update payment preference
   const updatePaymentPreference = (index: number, field: keyof PaymentPreference, value: string) => {
@@ -407,6 +409,7 @@ const Profile = () => {
               </Card>
             </motion.div>
           )}
+
 
           {/* Edit Form - Shows when editing or not saved yet */}
           {(!isSaved || isEditing) && (

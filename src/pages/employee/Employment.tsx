@@ -27,6 +27,21 @@ interface EmploymentData {
   role: string;
   created_at: string;
   updated_at: string;
+  // Multiple employment support
+  hasMultipleEmployments?: boolean;
+  totalEmployments?: number;
+  otherEmployments?: Array<{
+    id: string;
+    company: string;
+    companyEmail: string;
+    monthlyPayment: number;
+    paymentFrequency: string;
+    chain: string;
+    token: string;
+    status: string;
+    role: string;
+    created_at: string;
+  }>;
 }
 
 interface Transaction {
@@ -210,82 +225,153 @@ const Employment = () => {
             <p className="text-muted-foreground">View your employment details and payment history</p>
           </div>
 
-          {/* Current Employment Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="glass-card p-8 hover-lift bg-gradient-to-br from-white/80 to-white/60">
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-gradient-to-r from-primary to-blue-500 rounded-xl">
-                    <Building2 className="h-8 w-8 text-white" />
+          {/* All Employments */}
+          <div className="space-y-6">
+            {/* Primary Employment */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+                <Card className="glass-card p-8 hover-lift bg-gradient-to-br from-white/80 to-white/60">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-gradient-to-r from-primary to-blue-500 rounded-xl">
+                        <Building2 className="h-8 w-8 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold">{employmentData.company}</h2>
+                        <p className="text-sm text-muted-foreground">{employmentData.companyEmail}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge className="bg-green-500/20 text-green-700 hover:bg-green-500/30">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            {employmentData.status}
+                          </Badge>
+                          <Badge variant="outline" className="bg-blue-500/20 text-blue-700">
+                            {employmentData.role}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold">{employmentData.company}</h2>
-                    <p className="text-sm text-muted-foreground">{employmentData.companyEmail}</p>
-                    <Badge className="mt-2 bg-green-500/20 text-green-700 hover:bg-green-500/30">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      {employmentData.status}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
 
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <DollarSign className="h-4 w-4" />
-                    {employmentData.paymentFrequency === 'monthly' ? 'Monthly' : 'Payment'} Amount
-                  </div>
-                  <div className="text-2xl font-bold gradient-text">
-                    {employmentData.monthlyPayment.toFixed(6)} {employmentData.token.toUpperCase()}
-                  </div>
-                </div>
+                  <div className="grid md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <DollarSign className="h-4 w-4" />
+                        {employmentData.paymentFrequency === 'monthly' ? 'Monthly' : 'Payment'} Amount
+                      </div>
+                      <div className="text-2xl font-bold gradient-text">
+                        {employmentData.monthlyPayment.toFixed(6)} {employmentData.token.toUpperCase()}
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <Calendar className="h-4 w-4" />
-                    Payment Frequency
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {employmentData.paymentFrequency}
-                  </div>
-                </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <Calendar className="h-4 w-4" />
+                        Payment Frequency
+                      </div>
+                      <div className="text-2xl font-bold">
+                        {employmentData.paymentFrequency}
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <Building2 className="h-4 w-4" />
-                    Role
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <Building2 className="h-4 w-4" />
+                        Chain
+                      </div>
+                      <div className="text-2xl font-bold capitalize">
+                        {employmentData.chain}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-2xl font-bold">
-                    {employmentData.role}
-                  </div>
-                </div>
-              </div>
 
-              {/* Employee Info */}
-              <div className="mt-6 pt-6 border-t border-white/20">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
-                  <User className="h-4 w-4" />
-                  Employee Information
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Name</p>
-                    <p className="font-semibold">{employmentData.employee.first_name} {employmentData.employee.last_name}</p>
+                  {/* Employee Info */}
+                  <div className="mt-6 pt-6 border-t border-white/20">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
+                      <User className="h-4 w-4" />
+                      Employee Information
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Name</p>
+                        <p className="font-semibold">{employmentData.employee.first_name} {employmentData.employee.last_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Email</p>
+                        <p className="font-semibold">{employmentData.employee.email || 'Not provided'}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="font-semibold">{employmentData.employee.email || 'Not provided'}</p>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
+                </Card>
+              </motion.div>
 
+              {/* Other Employments */}
+              {employmentData.hasMultipleEmployments && employmentData.otherEmployments && employmentData.otherEmployments.map((employment, index) => (
+                <motion.div
+                  key={employment.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 + index * 0.1 }}
+                >
+                  <Card className="glass-card p-8 hover-lift bg-gradient-to-br from-white/80 to-white/60">
+                    <div className="flex items-start justify-between mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
+                          <Building2 className="h-8 w-8 text-white" />
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold">{employment.company}</h2>
+                          <p className="text-sm text-muted-foreground">{employment.companyEmail}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge className="bg-green-500/20 text-green-700 hover:bg-green-500/30">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              {employment.status}
+                            </Badge>
+                            <Badge variant="outline" className="bg-blue-500/20 text-blue-700">
+                              {employment.role}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
+                    <div className="grid md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                          <DollarSign className="h-4 w-4" />
+                          {employment.paymentFrequency === 'monthly' ? 'Monthly' : 'Payment'} Amount
+                        </div>
+                        <div className="text-2xl font-bold gradient-text">
+                          {employment.monthlyPayment.toFixed(6)} {employment.token.toUpperCase()}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                          <Calendar className="h-4 w-4" />
+                          Payment Frequency
+                        </div>
+                        <div className="text-2xl font-bold">
+                          {employment.paymentFrequency}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                          <Building2 className="h-4 w-4" />
+                          Chain
+                        </div>
+                        <div className="text-2xl font-bold capitalize">
+                          {employment.chain}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
 
           {/* Database Payment History Section */}
           <motion.div
