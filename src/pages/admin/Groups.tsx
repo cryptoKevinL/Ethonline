@@ -1087,7 +1087,7 @@ const handlePayEmployee = async (group: Group, employee: any): Promise<PaymentRe
 
     setIsLoadingIntents(true);
     try {
-      console.log('=== FETCHING INTENTS FROM SDK ===');
+      console.log('=== FETCHING INTENTS FROM SDK ===', page);
       const intents = await nexusSDK.getMyIntents(page);
       console.log('Number of intents found:', intents?.length);
       
