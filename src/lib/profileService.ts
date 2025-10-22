@@ -641,7 +641,9 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
             email: wallet.employees.email,
             wallet_address: wallet.account_address,
             chain: wallet.chain,
-            token: wallet.token
+            token: wallet.token,
+            secondary_chain: wallet.secondary_chain_preference,
+            secondary_token: wallet.secondary_token_preference
           })) || []
         };
       } else {
@@ -842,6 +844,14 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
         const employee = employment.employees;
         const wallet = employment.wallets?.[0]; // Get default wallet
         
+        console.log('🔍 Processing employment:', {
+          employee_name: `${employee.first_name} ${employee.last_name}`,
+          employment_secondary_chain: employment.secondary_chain_preference,
+          employment_secondary_token: employment.secondary_token_preference,
+          wallet_secondary_chain: wallet?.secondary_chain_preference,
+          wallet_secondary_token: wallet?.secondary_token_preference
+        });
+        
         return {
           id: employee.id,
           first_name: employee.first_name,
@@ -850,6 +860,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
           wallet_address: wallet?.account_address || '',
           chain: employment.chain || wallet?.chain || 'ethereum',
           token: employment.token || wallet?.token || 'usdc',
+          // Load secondary preferences from wallet (source of truth)
           secondary_chain: wallet?.secondary_chain_preference || employment.secondary_chain_preference || null,
           secondary_token: wallet?.secondary_token_preference || employment.secondary_token_preference || null,
           payment_amount: employment.payment_amount || 0,

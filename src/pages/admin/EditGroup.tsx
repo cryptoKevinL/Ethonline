@@ -39,6 +39,8 @@ interface SearchResult {
   wallet_address: string;
   chain?: string;
   token?: string;
+  secondary_chain?: string;
+  secondary_token?: string;
 }
 
 interface GroupData {
@@ -124,6 +126,15 @@ const EditGroup = () => {
       try {
         const result = await ProfileService.getPaymentGroupById(id);
         if (result.success && result.data) {
+          console.log('🔍 Group data loaded:', result.data);
+          console.log('🔍 Employees with secondary preferences:');
+          result.data.employees.forEach((emp, index) => {
+            console.log(`Employee ${index}:`, {
+              name: `${emp.first_name} ${emp.last_name}`,
+              secondary_chain: emp.secondary_chain,
+              secondary_token: emp.secondary_token
+            });
+          });
           setGroupData(result.data);
           setGroupName(result.data.name);
           setEmployees(result.data.employees);
@@ -366,7 +377,9 @@ const EditGroup = () => {
       name: `${employee.first_name} ${employee.last_name}`,
       payment: "0", // Default payment amount
       chain: employee.chain || "ethereum",
-      token: employee.token || "usdc"
+      token: employee.token || "usdc",
+      secondary_chain: employee.secondary_chain || "",
+      secondary_token: employee.secondary_token || ""
     });
     setSearchResults([]);
     setSearchQuery("");
