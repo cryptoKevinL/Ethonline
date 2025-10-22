@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Search, Plus, Edit2, Trash2, Save, Loader2, Send, ExternalLink, X, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, Search, Plus, Edit2, Trash2, Save, Loader2, Send, ExternalLink, X, Calendar, Clock, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 // Removed Blockscout SDK imports since we're using Supabase function instead
 import { ProfileService } from "@/lib/profileService";
@@ -102,6 +102,10 @@ const EditGroup = () => {
   const [paymentStartDate, setPaymentStartDate] = useState("");
   const [paymentEndDate, setPaymentEndDate] = useState("");
   const [paymentDayOfWeek, setPaymentDayOfWeek] = useState("");
+  
+  // Group management state
+  const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
 
   // Load group data on component mount
   useEffect(() => {
@@ -124,9 +128,24 @@ const EditGroup = () => {
           setGroupName(result.data.name);
           setEmployees(result.data.employees);
           // Initialize payment schedule fields
+          console.log('🔍 Payment schedule data from DB:', {
+            payment_frequency: result.data.payment_frequency,
+            payment_start_date: result.data.payment_start_date,
+            payment_end_date: result.data.payment_end_date,
+            payment_day_of_week: result.data.payment_day_of_week
+          });
+          
           setPaymentFrequency(result.data.payment_frequency || "");
-          setPaymentStartDate(result.data.payment_start_date || "");
-          setPaymentEndDate(result.data.payment_end_date || "");
+          
+          // Format dates for HTML date inputs (YYYY-MM-DD format)
+          const formatDateForInput = (dateString: string | null) => {
+            if (!dateString) return "";
+            const date = new Date(dateString);
+            return date.toISOString().split('T')[0];
+          };
+          
+          setPaymentStartDate(formatDateForInput(result.data.payment_start_date));
+          setPaymentEndDate(formatDateForInput(result.data.payment_end_date));
           setPaymentDayOfWeek(result.data.payment_day_of_week || "");
           console.log('Loaded group data:', result.data);
         } else {
@@ -362,9 +381,27 @@ const EditGroup = () => {
     if (newEmployee.address && newEmployee.name && newEmployee.payment && groupData) {
       setIsSaving(true);
       try {
+        // Extract employer ID from composite key (employerId-groupName)
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        let splitIndex = -1;
+        for (let i = 1; i <= groupData.id.length; i++) {
+          const potentialUuid = groupData.id.substring(0, i);
+          if (uuidPattern.test(potentialUuid)) {
+            splitIndex = i;
+          }
+        }
+        
+        if (splitIndex === -1) {
+          throw new Error('Invalid group ID format');
+        }
+        
+        const employerId = groupData.id.substring(0, splitIndex);
+        const groupName = groupData.id.substring(splitIndex + 1);
+        
         // Create employment record for the new employee
         const result = await ProfileService.addEmployeeToGroup({
-          employerId: groupData.id, // This is the employer_id from the group
+          employerId: employerId,
+          groupName: groupName,
           employeeData: {
             first_name: newEmployee.name.split(' ')[0] || '',
             last_name: newEmployee.name.split(' ').slice(1).join(' ') || '',
@@ -439,6 +476,83 @@ const EditGroup = () => {
     }
   };
 
+  const handleUpdateGroupName = async () => {
+    if (!groupData || !groupName.trim()) return;
+
+    setIsUpdatingGroup(true);
+    try {
+      const result = await ProfileService.updateGroupName({
+        groupId: groupData.id,
+        newGroupName: groupName.trim()
+      });
+
+      if (result.success) {
+        toast({
+          title: "Group Updated",
+          description: "The group name has been updated successfully.",
+        });
+        // Reload group data to get the updated information
+        const groupResult = await ProfileService.getPaymentGroupById(id!);
+        if (groupResult.success && groupResult.data) {
+          setGroupData(groupResult.data);
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to update group name.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating group name:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update group name.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingGroup(false);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupData) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the group "${groupData.name}"?\n\nThis will:\n- Remove all employees from this group\n- Delete all employment records\n- Preserve employee and wallet data\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setIsDeletingGroup(true);
+    try {
+      const result = await ProfileService.deleteGroup(groupData.id);
+
+      if (result.success) {
+        toast({
+          title: "Group Deleted",
+          description: result.message || "Group deleted successfully",
+        });
+        navigate("/admin/groups");
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete group",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete group. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingGroup(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50">
@@ -507,15 +621,71 @@ const EditGroup = () => {
             </Button>
           </div>
 
-          {/* Group Name */}
+
+          {/* Group Management */}
           <Card className="glass-card p-8 hover-lift">
-            <div className="space-y-4">
-              <label className="text-lg font-semibold">Group Name</label>
-              <Input
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                className="glass-card border-white/20 text-lg"
-              />
+            <div className="space-y-6">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-bold">Group Management</h2>
+              </div>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Group Name</Label>
+                    <Input
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      placeholder="Enter group name"
+                      className="glass-card border-white/20"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleUpdateGroupName}
+                      disabled={isUpdatingGroup || !groupName.trim()}
+                      className="bg-gradient-to-r from-primary to-blue-500 hover:opacity-90"
+                    >
+                      {isUpdatingGroup ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      {isUpdatingGroup ? "Updating..." : "Update Group"}
+                    </Button>
+                    
+                    <Button
+                      onClick={handleDeleteGroup}
+                      disabled={isDeletingGroup}
+                      variant="destructive"
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      {isDeletingGroup ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-2 h-4 w-4" />
+                      )}
+                      {isDeletingGroup ? "Deleting..." : "Delete Group"}
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="bg-yellow-50/50 p-4 rounded-lg border border-yellow-200/50">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Update Group:</strong> Change the group name to better organize your employees.
+                    </p>
+                  </div>
+                  
+                  <div className="bg-red-50/50 p-4 rounded-lg border border-red-200/50">
+                    <p className="text-sm text-red-800">
+                      <strong>Delete Group:</strong> This will remove all employees from this group and delete all employment records. Employee and wallet data will be preserved.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </Card>
 

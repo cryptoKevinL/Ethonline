@@ -773,9 +773,30 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
     }
   }
 
-  // Get specific payment group by employer ID
-  static async getPaymentGroupById(employerId: string) {
+  // Get specific payment group by composite ID (employerId-groupName)
+  static async getPaymentGroupById(groupId: string) {
     try {
+      // Parse the composite key to extract employer_id and group_name
+      // Format: "employerId-groupName" where employerId is a UUID with hyphens
+      // We need to find the last occurrence of a UUID pattern to split correctly
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      // Find the split point by looking for the UUID pattern
+      let splitIndex = -1;
+      for (let i = 1; i <= groupId.length; i++) {
+        const potentialUuid = groupId.substring(0, i);
+        if (uuidPattern.test(potentialUuid)) {
+          splitIndex = i;
+        }
+      }
+      
+      if (splitIndex === -1) {
+        throw new Error('Invalid group ID format - could not parse employer ID');
+      }
+      
+      const employerId = groupId.substring(0, splitIndex);
+      const groupName = groupId.substring(splitIndex + 1); // +1 to skip the hyphen
+      
       const { data, error } = await supabase
         .from('employments')
         .select(`
@@ -802,6 +823,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
           )
         `)
         .eq('employer_id', employerId)
+        .eq('group_name', groupName)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -846,8 +868,8 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
       }, 0);
 
       const groupData = {
-        id: employer.id,
-        name: employer.name,
+        id: groupId, // Use the composite key as the group ID
+        name: groupName, // Use the actual group name
         email: employer.email,
         employees: employees,
         totalPayment: totalPayment,
@@ -916,17 +938,19 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
         throw error;
       }
 
-      // Group employments by employer to create "groups"
+      // Group employments by employer and group name to create "groups"
       const groupsMap = new Map();
       
       data?.forEach(employment => {
         const employerId = employment.employer_id;
         const employerName = employment.employers.name;
+        const groupName = employment.group_name || 'Default Group'; // Use group name or default
+        const groupKey = `${employerId}-${groupName}`; // Create unique key for employer + group
         
-        if (!groupsMap.has(employerId)) {
-          groupsMap.set(employerId, {
-            id: employerId,
-            name: employerName,
+        if (!groupsMap.has(groupKey)) {
+          groupsMap.set(groupKey, {
+            id: groupKey, // Use composite key as group ID
+            name: `${employerName} - ${groupName}`, // Show both company and group name
             employer: employment.employers,
             employees: [],
             totalPayment: 0,
@@ -936,7 +960,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
           });
         }
         
-        const group = groupsMap.get(employerId);
+        const group = groupsMap.get(groupKey);
         group.employees.push({
           id: employment.employee_id,
           first_name: employment.employees.first_name,
@@ -1082,6 +1106,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
           employee_id: employeeId,
           status: 'active',
           role: 'employee',
+          group_name: groupData.groupName, // Store the group name
           payment_amount: (parseFloat(employee.payment) || 0).toString(),
           payment_frequency: groupData.payment_frequency || 'monthly',
           payment_start_date: groupData.payment_start_date || null,
@@ -1240,6 +1265,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
   // Add employee to existing group
   static async addEmployeeToGroup(data: {
     employerId: string;
+    groupName?: string; // Optional group name
     employeeData: {
       first_name: string;
       last_name: string;
@@ -1310,6 +1336,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
         employee_id: employeeId,
         status: 'active',
         role: 'employee',
+        group_name: data.groupName || null, // Store the group name
         payment_amount: (parseFloat(data.employeeData.payment) || 0).toString(),
         payment_frequency: 'monthly', // Default frequency
         chain: data.employeeData.chain || 'ethereum',
@@ -2200,14 +2227,33 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
     }
   }
 
-  // Update payment schedule for a group/employer
-  static async updatePaymentSchedule(employerId: string, scheduleData: {
+  // Update payment schedule for a specific group
+  static async updatePaymentSchedule(groupId: string, scheduleData: {
     payment_frequency: string;
     payment_start_date: string;
     payment_end_date?: string;
     payment_day_of_week: string;
   }) {
     try {
+      // Parse the composite key to extract employer_id and group_name
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      // Find the split point by looking for the UUID pattern
+      let splitIndex = -1;
+      for (let i = 1; i <= groupId.length; i++) {
+        const potentialUuid = groupId.substring(0, i);
+        if (uuidPattern.test(potentialUuid)) {
+          splitIndex = i;
+        }
+      }
+      
+      if (splitIndex === -1) {
+        throw new Error('Invalid group ID format - could not parse employer ID');
+      }
+      
+      const employerId = groupId.substring(0, splitIndex);
+      const groupName = groupId.substring(splitIndex + 1);
+
       const { data, error } = await supabase
         .from('employments')
         .update({
@@ -2218,6 +2264,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
           updated_at: new Date().toISOString()
         })
         .eq('employer_id', employerId)
+        .eq('group_name', groupName)
         .select();
 
       if (error) {
@@ -2227,6 +2274,120 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
       return { success: true, data };
     } catch (error) {
       console.error('Error updating payment schedule:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Update group name
+  static async updateGroupName(data: {
+    groupId: string;
+    newGroupName: string;
+  }) {
+    try {
+      // Parse the composite key to extract employer_id and group_name
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      // Find the split point by looking for the UUID pattern
+      let splitIndex = -1;
+      for (let i = 1; i <= data.groupId.length; i++) {
+        const potentialUuid = data.groupId.substring(0, i);
+        if (uuidPattern.test(potentialUuid)) {
+          splitIndex = i;
+        }
+      }
+      
+      if (splitIndex === -1) {
+        throw new Error('Invalid group ID format - could not parse employer ID');
+      }
+      
+      const employerId = data.groupId.substring(0, splitIndex);
+      const oldGroupName = data.groupId.substring(splitIndex + 1);
+
+      // Update all employment records for this group
+      const { error } = await supabase
+        .from('employments')
+        .update({ 
+          group_name: data.newGroupName,
+          updated_at: new Date().toISOString()
+        })
+        .eq('employer_id', employerId)
+        .eq('group_name', oldGroupName);
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true, message: `Group renamed from "${oldGroupName}" to "${data.newGroupName}"` };
+    } catch (error) {
+      console.error('Error updating group name:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Delete entire group (all employments for a specific employer and group)
+  static async deleteGroup(groupId: string) {
+    try {
+      // Parse the composite key to extract employer_id and group_name
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      // Find the split point by looking for the UUID pattern
+      let splitIndex = -1;
+      for (let i = 1; i <= groupId.length; i++) {
+        const potentialUuid = groupId.substring(0, i);
+        if (uuidPattern.test(potentialUuid)) {
+          splitIndex = i;
+        }
+      }
+      
+      if (splitIndex === -1) {
+        throw new Error('Invalid group ID format - could not parse employer ID');
+      }
+      
+      const employerId = groupId.substring(0, splitIndex);
+      const groupName = groupId.substring(splitIndex + 1);
+
+      // First, get all employment IDs for this group
+      const { data: employments, error: fetchError } = await supabase
+        .from('employments')
+        .select('id')
+        .eq('employer_id', employerId)
+        .eq('group_name', groupName);
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      if (!employments || employments.length === 0) {
+        return { success: true, message: 'Group not found or already deleted' };
+      }
+
+      const employmentIds = employments.map(emp => emp.id);
+
+      // Unlink all wallets from these employments
+      const { error: walletError } = await supabase
+        .from('wallets')
+        .update({ employment_id: null })
+        .in('employment_id', employmentIds);
+
+      if (walletError) {
+        console.error('Error unlinking wallets from employments:', walletError);
+        // Continue with employment deletion even if wallet unlinking fails
+      }
+
+      // Delete all employment records for this group
+      const { error: deleteError } = await supabase
+        .from('employments')
+        .delete()
+        .eq('employer_id', employerId)
+        .eq('group_name', groupName);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      return { success: true, message: `Group "${groupName}" deleted successfully` };
+    } catch (error) {
+      console.error('Error deleting group:', error);
       return { success: false, error: error.message };
     }
   }
