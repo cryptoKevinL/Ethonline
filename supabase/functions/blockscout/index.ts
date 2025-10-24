@@ -5,6 +5,7 @@ const BLOCKSCOUT_API_KEY = Deno.env.get("BLOCKSCOUT_API_KEY") ?? "";
 const ALLOWED_ORIGINS = new Set([
   "http://localhost:8080",
   "https://paystream.cc",
+  "https://pyusd.paystream.cc",
 ]);
 
 const CHAIN_TO_HOST: Record<string, string> = {

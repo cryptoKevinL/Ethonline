@@ -3,11 +3,14 @@ import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, DollarSign, TrendingUp, Clock, Building2, Loader2 } from "lucide-react";
+import { Users, DollarSign, TrendingUp, Clock, Building2, Loader2, AlertTriangle, Fuel, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileService } from "@/lib/profileService";
+import { Badge } from "@/components/ui/badge";
+import { useNexus } from '@/providers/NexusProvider';
+import { useAccount } from 'wagmi';
 
 interface Company {
   id: string;
@@ -30,13 +33,35 @@ interface DashboardStats {
   }>;
 }
 
+interface ChainGasBalance {
+  chainId: number;
+  chainName: string;
+  balance: string;
+  balanceInETH: number;
+  isLow: boolean;
+  threshold: number;
+}
+
+const SUPPORTED_CHAINS = [
+  { id: 11155111, name: "Sepolia", threshold: 0.01 },
+  { id: 84532, name: "Base", threshold: 0.005 },
+  { id: 421614, name: "Arbitrum", threshold: 0.005 },
+  { id: 11155420, name: "Optimism", threshold: 0.005 }
+];
+
 const Home = () => {
   const { toast } = useToast();
+  const { nexusSDK, isInitialized } = useNexus();
+  const { address } = useAccount();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [gasBalances, setGasBalances] = useState<ChainGasBalance[]>([]);
+  const [isLoadingGas, setIsLoadingGas] = useState(false);
+  const [isRefueling, setIsRefueling] = useState<string | null>(null);
+  const [hasLowGas, setHasLowGas] = useState(false);
 
   // Load companies on component mount
   useEffect(() => {
@@ -48,7 +73,7 @@ const Home = () => {
           setCompanies(result.data);
           console.log('Loaded companies:', result.data);
           if (result.data.length > 0) {
-            setSelectedCompanyId(result.data[0].id); // Select first company by default
+            setSelectedCompanyId(result.data[0].id);
           }
         } else {
           console.error('Failed to load companies:', result.error);
@@ -107,41 +132,237 @@ const Home = () => {
     }
   }, [selectedCompanyId, toast]);
 
+  // Check gas balances using Nexus SDK
+  const checkGasBalances = async () => {
+    if (!nexusSDK || !isInitialized) {
+      console.log('Nexus SDK not initialized');
+      return;
+    }
+
+    setIsLoadingGas(true);
+    try {
+      console.log('🔍 Checking gas balances across all chains...');
+      
+      const balances: ChainGasBalance[] = [];
+      let lowGasDetected = false;
+
+      // Get unified balances from Nexus SDK
+      const unifiedBalances = await nexusSDK.getUnifiedBalances();
+      console.log('Unified balances:', unifiedBalances);
+
+      // Find ETH token across all chains
+      const ethToken = unifiedBalances?.find(token => 
+        token.symbol === 'ETH' || token.symbol === 'WETH'
+      );
+
+      if (ethToken) {
+        for (const chain of SUPPORTED_CHAINS) {
+          const chainBalance = ethToken.breakdown.find(b => b.chain.id === chain.id);
+          const balanceInETH = chainBalance ? parseFloat(chainBalance.balance) : 0;
+          const isLow = balanceInETH < chain.threshold;
+
+          balances.push({
+            chainId: chain.id,
+            chainName: chain.name,
+            balance: chainBalance?.balance || "0",
+            balanceInETH,
+            isLow,
+            threshold: chain.threshold
+          });
+
+          if (isLow) {
+            lowGasDetected = true;
+            console.log(`⚠️ Low gas detected on ${chain.name}: ${balanceInETH} ETH (threshold: ${chain.threshold} ETH)`);
+          } else {
+            console.log(`✅ Sufficient gas on ${chain.name}: ${balanceInETH} ETH`);
+          }
+        }
+      } else {
+        // If no ETH found, mark all chains as low
+        for (const chain of SUPPORTED_CHAINS) {
+          balances.push({
+            chainId: chain.id,
+            chainName: chain.name,
+            balance: "0",
+            balanceInETH: 0,
+            isLow: true,
+            threshold: chain.threshold
+          });
+        }
+        lowGasDetected = true;
+      }
+
+      setGasBalances(balances);
+      setHasLowGas(lowGasDetected);
+
+      if (lowGasDetected) {
+        const lowGasChains = balances.filter(b => b.isLow).map(b => b.chainName);
+        toast({
+          title: "⚠️ Low Gas Alert",
+          description: `Low gas balance detected on: ${lowGasChains.join(', ')}`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "✅ Gas Check Complete",
+          description: "Sufficient gas on all chains",
+        });
+      }
+
+    } catch (error) {
+      console.error('Error checking gas balances:', error);
+      toast({
+        title: "Error",
+        description: "Failed to check gas balances",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingGas(false);
+    }
+  };
+
+  // Refuel gas using Nexus SDK transfer
+  const handleRefuelGas = async (targetChainId: number, targetChainName: string) => {
+    if (!nexusSDK || !isInitialized || !address) {
+      toast({
+        title: "Error",
+        description: "Please connect your wallet and ensure Nexus SDK is initialized",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsRefueling(targetChainName);
+    
+    try {
+      console.log(`⛽ Refueling gas on ${targetChainName}...`);
+      
+      // Determine refuel amount based on chain
+      const refuelAmount = targetChainId === 11155111 ? "0.05" : "0.02"; // More for Sepolia, less for L2s
+      
+      toast({
+        title: "Starting Gas Refuel",
+        description: `Sending ${refuelAmount} ETH to ${targetChainName}...`,
+      });
+
+      // Use Nexus SDK to transfer ETH to the target chain
+      const transferResult = await nexusSDK.transfer({
+        token: 'ETH',
+        amount: refuelAmount,
+        chainId: targetChainId as any,
+        recipient: address as `0x${string}`,
+        sourceChains: [11155111] // Use Sepolia as source
+      });
+
+      if (transferResult.success) {
+        toast({
+          title: "✅ Gas Refuel Successful",
+          description: `Sent ${refuelAmount} ETH to ${targetChainName}. Transaction: ${transferResult.transactionHash.slice(0, 10)}...`,
+        });
+        
+        // Wait a bit and refresh gas balances
+        setTimeout(() => {
+          checkGasBalances();
+        }, 5000);
+      } else {
+        throw new Error("Transfer failed");
+      }
+
+    } catch (error) {
+      console.error('Error refueling gas:', error);
+      toast({
+        title: "❌ Gas Refuel Failed",
+        description: `Failed to refuel ${targetChainName}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefueling(null);
+    }
+  };
+
+  // Check gas balances on component mount and when company changes
+  useEffect(() => {
+    if (selectedCompanyId && isInitialized) {
+      checkGasBalances();
+    }
+  }, [selectedCompanyId, isInitialized]);
+
   const handleCompanySelect = (companyId: string) => {
     setSelectedCompanyId(companyId);
   };
 
-  // Create stats array from dashboard data
-  const stats = dashboardStats ? [
-    {
-      label: "Total Employees",
-      value: dashboardStats.totalEmployees.toString(),
-      icon: Users,
-      trend: "Active employees",
-      color: "from-blue-500 to-cyan-500",
-    },
-    {
-      label: "Active Groups",
-      value: dashboardStats.activeGroups.toString(),
-      icon: TrendingUp,
-      trend: "Payment groups",
-      color: "from-purple-500 to-pink-500",
-    },
-    {
-      label: "Monthly Payout",
-      value: `$${dashboardStats.monthlyPayout.toFixed(6)}`,
-      icon: DollarSign,
-      trend: "Total monthly",
-      color: "from-green-500 to-emerald-500",
-    },
-    {
-      label: "Pending Payments",
-      value: dashboardStats.pendingPayments.toString(),
-      icon: Clock,
-      trend: "Awaiting processing",
-      color: "from-orange-500 to-red-500",
-    },
-  ] : [];
+  const handleRefreshGas = () => {
+    checkGasBalances();
+  };
+
+  // Create stats array from dashboard data with safe defaults
+  const getStats = () => {
+    if (!dashboardStats) {
+      return [
+        {
+          label: "Total Employees",
+          value: "0",
+          icon: Users,
+          trend: "Active employees",
+          color: "from-blue-500 to-cyan-500",
+        },
+        {
+          label: "Active Groups",
+          value: "0",
+          icon: TrendingUp,
+          trend: "Payment groups",
+          color: "from-purple-500 to-pink-500",
+        },
+        {
+          label: "Monthly Payout",
+          value: "$0.00",
+          icon: DollarSign,
+          trend: "Total monthly",
+          color: "from-green-500 to-emerald-500",
+        },
+        {
+          label: "Pending Payments",
+          value: "0",
+          icon: Clock,
+          trend: "Awaiting processing",
+          color: "from-orange-500 to-red-500",
+        },
+      ];
+    }
+
+    return [
+      {
+        label: "Total Employees",
+        value: dashboardStats.totalEmployees.toString(),
+        icon: Users,
+        trend: "Active employees",
+        color: "from-blue-500 to-cyan-500",
+      },
+      {
+        label: "Active Groups",
+        value: dashboardStats.activeGroups.toString(),
+        icon: TrendingUp,
+        trend: "Payment groups",
+        color: "from-purple-500 to-pink-500",
+      },
+      {
+        label: "Monthly Payout",
+        value: `$${dashboardStats.monthlyPayout.toFixed(6)}`,
+        icon: DollarSign,
+        trend: "Total monthly",
+        color: "from-green-500 to-emerald-500",
+      },
+      {
+        label: "Pending Payments",
+        value: dashboardStats.pendingPayments.toString(),
+        icon: Clock,
+        trend: "Awaiting processing",
+        color: "from-orange-500 to-red-500",
+      },
+    ];
+  };
+
+  const stats = getStats();
 
   if (isLoading) {
     return (
@@ -194,6 +415,7 @@ const Home = () => {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-8"
         >
+          {/* Header Section */}
           <div className="flex items-center justify-between">
             <div className="space-y-2">
               <h1 className="text-4xl font-bold gradient-text">Admin Dashboard</h1>
@@ -286,7 +508,7 @@ const Home = () => {
           {/* Quick Actions */}
           <Card className="glass-card p-8">
             <h2 className="text-2xl font-bold mb-6 gradient-text">Quick Actions</h2>
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <Link to="/admin/create-group">
                 <Card className="p-6 hover-lift cursor-pointer bg-gradient-to-r from-primary/10 to-blue-500/10 border-primary/20">
                   <h3 className="font-semibold text-lg mb-2">Create Payment Group</h3>
@@ -299,7 +521,183 @@ const Home = () => {
                   <p className="text-sm text-muted-foreground">Manage existing payment groups</p>
                 </Card>
               </Link>
+              <Link to="/admin/profile">
+                <Card className="p-6 hover-lift cursor-pointer bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/20">
+                  <h3 className="font-semibold text-lg mb-2">Company Profile</h3>
+                  <p className="text-sm text-muted-foreground">Update company information</p>
+                </Card>
+              </Link>
             </div>
+          </Card>
+
+          {/* Gas Monitor Section - Added after Quick Actions */}
+          <Card className="glass-card p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Fuel className="h-6 w-6 text-orange-500" />
+                <h2 className="text-2xl font-bold gradient-text">Gas Monitor</h2>
+              </div>
+              <Badge variant={hasLowGas ? "destructive" : "default"}>
+                {hasLowGas ? "Low Gas Alert" : "All Systems Go"}
+              </Badge>
+            </div>
+
+            {!isInitialized ? (
+              <div className="text-center py-8">
+                <Fuel className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Connect Wallet</h3>
+                <p className="text-muted-foreground mb-4">
+                  Please connect your wallet to check gas balances across chains
+                </p>
+                <Button variant="outline" disabled>
+                  <Fuel className="h-4 w-4 mr-2" />
+                  Connect Wallet First
+                </Button>
+              </div>
+            ) : isLoadingGas ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="text-muted-foreground">Checking gas balances...</span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Gas Balance Alert */}
+                {hasLowGas && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="glass-card p-4 border-2 border-red-300 bg-red-50/50 hover-lift"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-red-100">
+                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-red-800 text-sm">Low Gas Balance Alert</h3>
+                          <p className="text-xs text-red-600">
+                            Some chains have insufficient ETH for gas fees
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRefreshGas}
+                        disabled={isLoadingGas}
+                        className="border-red-300 text-red-700 hover:bg-red-100 h-8"
+                      >
+                        {isLoadingGas ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          "Refresh"
+                        )}
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Gas Balances Grid */}
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {gasBalances.map((chain) => (
+                    <motion.div
+                      key={chain.chainId}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        chain.isLow 
+                          ? 'bg-red-50 border-red-200' 
+                          : 'bg-green-50 border-green-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className={`font-semibold ${
+                          chain.isLow ? 'text-red-800' : 'text-green-800'
+                        }`}>
+                          {chain.chainName}
+                        </span>
+                        {chain.isLow && (
+                          <AlertTriangle className="h-4 w-4 text-red-500" />
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Balance:</span>
+                          <span className={`font-mono text-sm ${
+                            chain.isLow ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {chain.balanceInETH.toFixed(6)} ETH
+                          </span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Minimum:</span>
+                          <span className="font-mono text-sm text-gray-500">
+                            {chain.threshold} ETH
+                          </span>
+                        </div>
+                      </div>
+
+                      {chain.isLow && (
+                        <Button
+                          size="sm"
+                          className="w-full mt-3 bg-orange-500 hover:bg-orange-600"
+                          onClick={() => handleRefuelGas(chain.chainId, chain.chainName)}
+                          disabled={isRefueling === chain.chainName}
+                        >
+                          {isRefueling === chain.chainName ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <Fuel className="h-3 w-3 mr-1" />
+                          )}
+                          Refuel Gas
+                        </Button>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handleRefreshGas}
+                    disabled={isLoadingGas}
+                    className="flex-1"
+                  >
+                    {isLoadingGas ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Fuel className="h-4 w-4 mr-2" />
+                    )}
+                    Refresh Gas Balances
+                  </Button>
+                  
+                  {hasLowGas && (
+                    <Button
+                      onClick={() => {
+                        const lowGasChain = gasBalances.find(chain => chain.isLow);
+                        if (lowGasChain) {
+                          handleRefuelGas(lowGasChain.chainId, lowGasChain.chainName);
+                        }
+                      }}
+                      disabled={isRefueling !== null}
+                      className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:opacity-90"
+                    >
+                      {isRefueling ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Fuel className="h-4 w-4 mr-2" />
+                      )}
+                      Refuel All Chains
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Recent Groups */}

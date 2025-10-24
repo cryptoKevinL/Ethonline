@@ -10,6 +10,60 @@ This document contains feedback, issues, and suggestions for the AVAIL team base
 
 ### Documentation Questions
 
+### Issue 0: Confusion About Token Conversion in `transfer()` Function
+
+**Context:**  
+While testing the `transfer()` method of the Avail Nexus SDK, there was confusion about how token conversion actually works when sending assets cross-chain.
+
+At the very top of the docs, the description says:
+
+> “Use the transfer() function to convert multiple tokens from multiple chains to a single token on a single chain.”
+
+This statement led me to believe that if I only had **ETH** on the source chain (e.g., **Sepolia**) and I wanted to receive **USDC** on the destination chain (e.g., **Base**), the SDK would automatically handle the conversion from **ETH → USDC** before bridging.
+
+---
+
+**Example Code Used:**
+```bash
+
+typescript
+const result: TransferResult = await sdk.transfer({
+  token: 'USDC', // Convert selected tokens to USDC
+  amount: 100,
+  chainId: 84532, // Base Sepolia
+  recipient: '0x...',
+  sourceChains: [11155111], //only uses ETH from Sepolia
+});
+```
+
+Expected Behavior (Based on Docs):
+
+The SDK would use ETH from Sepolia (since that’s what the sender holds).
+
+It would automatically convert that ETH into USDC and send it to the receiver on Base.
+
+Actual Behavior (Confirmed by Avail Team on Discord):
+
+The SDK does not automatically perform token conversion from ETH → USDC.
+
+The sender must already have USDC on the source chain.
+
+The documentation was confirmed to be incorrect and will be updated.
+
+Clarification from Avail Team (RobinRRT):
+
+“This is actually wrong in the docs. We need to update it.
+It takes a single token from multiple sources and sends it to the receiver.
+What you are looking to do might require the XCS swap feature (Swap with exactOut + Transfer USDC).”
+
+Feedback & Suggestions:
+
+The documentation should clearly state that the transfer() method does not swap tokens — it only aggregates existing balances of the same token across multiple chains for transfer.
+
+The line “Convert selected tokens to USDC” should be revised to “Transfers an existing supported token (e.g., USDC) from one or multiple source chains to the destination chain.”
+
+Add a cross-reference to the XCS Swap (exactOut) section for developers looking to convert one token (e.g., ETH) into another (e.g., USDC) and transfer it in one step.
+
 ### Issue 1: Question on Allowances and Order of Operations 
 ```
 How Allowances Work?

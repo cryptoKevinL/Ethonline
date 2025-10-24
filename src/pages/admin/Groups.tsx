@@ -345,7 +345,7 @@ const Groups = () => {
         clearTimeout(autoRefreshTimeout);
       };
     }
-  }, [address]); // Removed 'groups' to prevent infinite loop
+  }, [address, groups]);
 
   useEffect(() => {
     if (isInitialized && nexusSDK) {
@@ -453,7 +453,7 @@ const Groups = () => {
         amount: parseFloat(employee.payment_amount || '0').toString(),
         chainId: destinationChainId as any,
         recipient: employee.wallet_address as `0x${string}`,
-        sourceChains: [11155111] as number[]
+        sourceChains: [11155111, 84532] as number[]
       };
 
       console.log(`Transfer Parameters (Preference ${preferenceNumber}):`, transferParams);
@@ -754,7 +754,7 @@ const handlePayEmployee = async (group: Group, employee: any): Promise<PaymentRe
             amount: parseFloat(employee.payment_amount || '0').toString(),
             chainId: destinationChainId as any,
             recipient: employee.wallet_address as `0x${string}`,
-            sourceChains: [11155111] as number[]
+            sourceChains: [11155111, 84532] as number[]
           };
 
           console.log(`Simulating preference ${preferenceNumber}:`, preference);
