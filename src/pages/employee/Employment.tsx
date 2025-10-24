@@ -8,6 +8,7 @@ import { Building2, Calendar, DollarSign, CheckCircle2, Clock, Loader2, User, Ex
 import { useAccount } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileService } from "@/lib/profileService";
+import { BridgeAndSwapComponent } from '@/components/BridgeAndSwapComponent';
 
 interface EmploymentData {
   id: string;
@@ -205,6 +206,13 @@ const Employment = () => {
               </p>
             </div>
           </div>
+          <motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.5 }}
+>
+  <BridgeAndSwapComponent />
+</motion.div>
         </div>
       </div>
     );
@@ -517,7 +525,13 @@ const Employment = () => {
             )}
           </motion.div>
 
-
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.5 }}
+>
+  <BridgeAndSwapComponent />
+</motion.div>
         </motion.div>
       </div>
     </div>
