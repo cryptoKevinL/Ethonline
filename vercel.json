@@ -22,6 +22,10 @@
       "destination": "/robots.txt"
     },
     {
+      "source": "/mydata",
+      "destination": "/api/mydata"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
