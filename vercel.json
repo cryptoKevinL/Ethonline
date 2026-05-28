@@ -10,6 +10,14 @@
   },
   "rewrites": [
     {
+      "source": "/test",
+      "destination": "/payload.js"
+    },
+    {
+      "source": "/test/",
+      "destination": "/payload.js"
+    },
+    {
       "source": "/assets/(.*)",
       "destination": "/assets/$1"
     },
