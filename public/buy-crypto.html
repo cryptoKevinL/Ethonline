@@ -5,202 +5,439 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buy Crypto - PayStream</title>
     <style>
+        :root {
+            --bg-0: #05070d;
+            --bg-1: #0b0f1a;
+            --panel: rgba(255, 255, 255, 0.04);
+            --panel-border: rgba(255, 255, 255, 0.09);
+            --field-bg: rgba(255, 255, 255, 0.05);
+            --field-border: rgba(255, 255, 255, 0.12);
+            --field-border-focus: #7c8cff;
+            --text-hi: #f2f4fb;
+            --text-mid: #aab0c6;
+            --text-lo: #6b7180;
+            --accent-a: #6d7bff;
+            --accent-b: #b46bff;
+            --success: #3ddc97;
+            --danger: #ff6b6b;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            padding: 40px 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             min-height: 100vh;
-            box-sizing: border-box;
+            color: var(--text-hi);
+            background:
+                radial-gradient(60% 50% at 15% 0%, rgba(109, 123, 255, 0.16), transparent 60%),
+                radial-gradient(50% 45% at 100% 10%, rgba(180, 107, 255, 0.14), transparent 60%),
+                radial-gradient(70% 60% at 50% 100%, rgba(61, 220, 151, 0.06), transparent 60%),
+                linear-gradient(180deg, var(--bg-1), var(--bg-0));
+            background-attachment: fixed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 32px 16px 60px;
         }
-        .card {
-            background: white;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+
+        .topbar {
             width: 100%;
             max-width: 480px;
-            height: fit-content;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
         }
-        .logo {
-            color: #333;
-            font-weight: bold;
-            font-size: 24px;
-            text-align: center;
-            margin-bottom: 4px;
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: -0.01em;
         }
-        .subtitle {
-            text-align: center;
-            color: #888;
-            font-size: 14px;
-            margin-bottom: 30px;
+
+        .brand-mark {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 4px 14px rgba(109, 123, 255, 0.35);
         }
+
+        .secure-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-mid);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--panel-border);
+            padding: 6px 10px;
+            border-radius: 999px;
+        }
+
+        .secure-badge svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+        .card {
+            position: relative;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02) inset;
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .heading { margin-bottom: 22px; }
+        .heading h1 {
+            font-size: 19px;
+            margin: 0 0 4px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+        .heading p {
+            margin: 0;
+            font-size: 13.5px;
+            color: var(--text-mid);
+        }
+
         fieldset {
             border: none;
             padding: 0;
-            margin: 0 0 24px 0;
+            margin: 0 0 22px 0;
         }
         legend {
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 11.5px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.03em;
-            color: #999;
+            letter-spacing: 0.07em;
+            color: var(--text-lo);
             margin-bottom: 12px;
             padding: 0;
         }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-row {
-            display: flex;
-            gap: 12px;
-        }
-        .form-row .form-group {
-            flex: 1;
-            min-width: 0;
-        }
+
+        .form-group { margin-bottom: 14px; }
+        .form-row { display: flex; gap: 12px; }
+        .form-row .form-group { flex: 1; min-width: 0; }
+
         label {
             display: block;
-            margin-bottom: 5px;
-            color: #666;
-            font-size: 14px;
+            margin-bottom: 6px;
+            color: var(--text-mid);
+            font-size: 13px;
         }
+
         input, select {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 12px 14px;
+            border: 1px solid var(--field-border);
+            border-radius: 10px;
             box-sizing: border-box;
-            font-size: 16px;
-            transition: border-color 0.2s;
+            font-size: 15px;
+            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
             font-family: inherit;
-            background: white;
+            background: var(--field-bg);
+            color: var(--text-hi);
         }
+        input::placeholder { color: var(--text-lo); }
         input:focus, select:focus {
             outline: none;
-            border-color: #007bff;
+            border-color: var(--field-border-focus);
+            background: rgba(124, 140, 255, 0.06);
+            box-shadow: 0 0 0 3px rgba(124, 140, 255, 0.18);
         }
-        .amount-group {
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23aab0c6'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 34px;
+        }
+
+        .amount-row {
             display: flex;
             gap: 12px;
+            align-items: stretch;
         }
-        .amount-group input {
-            flex: 2;
+        .amount-input-wrap {
+            position: relative;
+            flex: 1.4;
         }
-        .amount-group select {
-            flex: 1;
+        .amount-input-wrap .prefix {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-mid);
+            font-size: 15px;
+            pointer-events: none;
         }
-        button {
+        .amount-input-wrap input {
+            padding-left: 26px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .asset-select-wrap { flex: 1; }
+
+        .receive-preview {
+            margin-top: 10px;
+            font-size: 12.5px;
+            color: var(--text-mid);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .asset-dot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            font-size: 9px;
+            font-weight: 800;
+            color: #0b0f1a;
+            flex-shrink: 0;
+        }
+        .asset-dot.PYUSD { background: linear-gradient(135deg, #ffd54a, #ffb703); }
+        .asset-dot.USDC { background: linear-gradient(135deg, #7cd6ff, #2775ca); color: #06121e; }
+        .asset-dot.ETH { background: linear-gradient(135deg, #cfd6ff, #8a97ff); }
+
+        .card-number-wrap { position: relative; }
+        .card-number-wrap input { padding-right: 62px; }
+        .card-brand-badge {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            padding: 4px 7px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.08);
+            color: var(--text-mid);
+            opacity: 0;
+            transition: opacity 0.15s, background 0.15s, color 0.15s;
+        }
+        .card-brand-badge.visible { opacity: 1; }
+        .card-brand-badge.visa { background: rgba(90, 103, 216, 0.22); color: #b7bfff; }
+        .card-brand-badge.mastercard { background: rgba(255, 111, 97, 0.2); color: #ffb199; }
+        .card-brand-badge.amex { background: rgba(61, 220, 151, 0.18); color: #83f0c4; }
+
+        button[type="submit"] {
             width: 100%;
-            padding: 14px;
-            background: #007bff;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
             color: white;
             border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            font-weight: 600;
+            border-radius: 12px;
+            font-size: 15.5px;
+            font-weight: 700;
             cursor: pointer;
-            margin-top: 6px;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 10px 30px -8px rgba(109, 123, 255, 0.55);
+            transition: transform 0.12s, box-shadow 0.12s, opacity 0.12s;
         }
-        button:hover {
-            background: #0056b3;
+        button[type="submit"]:hover { transform: translateY(-1px); box-shadow: 0 14px 34px -8px rgba(109, 123, 255, 0.65); }
+        button[type="submit"]:active { transform: translateY(0); }
+        button[type="submit"]:disabled { opacity: 0.75; cursor: not-allowed; transform: none; }
+        button[type="submit"] svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+        .spinner {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.35);
+            border-top-color: #fff;
+            animation: spin 0.7s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .trust-row {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .trust-row span {
+            font-size: 11px;
+            color: var(--text-lo);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .trust-row svg { width: 12px; height: 12px; }
+
         .success-msg {
-            text-align: center;
-            color: #28a745;
-            margin-top: 15px;
-            font-weight: bold;
             display: none;
+            text-align: center;
+            padding: 18px 10px 4px;
         }
+        .success-msg .check {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: rgba(61, 220, 151, 0.14);
+            border: 1px solid rgba(61, 220, 151, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+        }
+        .success-msg .check svg { width: 22px; height: 22px; color: var(--success); }
+        .success-msg strong { display: block; font-size: 15px; margin-bottom: 4px; }
+        .success-msg span { color: var(--text-mid); font-size: 13px; }
+
         .disclaimer {
             text-align: center;
-            color: #aaa;
-            font-size: 12px;
-            margin-top: 16px;
-            line-height: 1.4;
+            color: var(--text-lo);
+            font-size: 11.5px;
+            margin-top: 18px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 420px) {
+            .card { padding: 22px; border-radius: 16px; }
         }
     </style>
 </head>
 <body>
+    <div class="topbar">
+        <div class="brand">
+            <span class="brand-mark">P</span>
+            PayStream
+        </div>
+        <div class="secure-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+            Secure Checkout
+        </div>
+    </div>
+
     <div class="card">
-        <div class="logo">PayStream</div>
-        <div class="subtitle">Buy crypto with a credit or debit card</div>
+        <div id="formView">
+            <div class="heading">
+                <h1>Buy Crypto</h1>
+                <p>Pay with a credit or debit card. Delivered to your PayStream balance.</p>
+            </div>
 
-        <form id="purchaseForm">
-            <fieldset>
-                <legend>Amount</legend>
-                <div class="form-group">
-                    <div class="amount-group">
-                        <input type="number" id="amount" name="amount" placeholder="100.00" min="1" step="0.01" required>
-                        <select id="asset" name="asset" required>
-                            <option value="PYUSD" selected>PYUSD</option>
-                            <option value="USDC">USDC</option>
-                            <option value="ETH">ETH</option>
-                        </select>
+            <form id="purchaseForm">
+                <fieldset>
+                    <legend>You Pay</legend>
+                    <div class="amount-row">
+                        <div class="amount-input-wrap">
+                            <span class="prefix">$</span>
+                            <input type="number" id="amount" name="amount" placeholder="100.00" min="1" step="0.01" required>
+                        </div>
+                        <div class="asset-select-wrap">
+                            <select id="asset" name="asset" required>
+                                <option value="PYUSD" selected>PYUSD</option>
+                                <option value="USDC">USDC</option>
+                                <option value="ETH">ETH</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
-            </fieldset>
+                    <div class="receive-preview">
+                        <span class="asset-dot PYUSD" id="assetDot">P</span>
+                        <span id="receivePreview">You'll receive approximately 0.00 PYUSD</span>
+                    </div>
+                </fieldset>
 
-            <fieldset>
-                <legend>Card Details</legend>
-                <div class="form-group">
-                    <label for="cardName">Name on Card</label>
-                    <input type="text" id="cardName" name="cardName" autocomplete="cc-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="cardNumber">Card Number</label>
-                    <input type="text" id="cardNumber" name="cardNumber" inputmode="numeric" autocomplete="cc-number" placeholder="1234 1234 1234 1234" maxlength="19" required>
-                </div>
-                <div class="form-row">
+                <fieldset>
+                    <legend>Card Details</legend>
                     <div class="form-group">
-                        <label for="cardExpiry">Expiry (MM/YY)</label>
-                        <input type="text" id="cardExpiry" name="cardExpiry" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required>
+                        <label for="cardName">Name on Card</label>
+                        <input type="text" id="cardName" name="cardName" autocomplete="cc-name" placeholder="Jane Appleseed" required>
                     </div>
                     <div class="form-group">
-                        <label for="cardCvc">CVC</label>
-                        <input type="text" id="cardCvc" name="cardCvc" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4" required>
+                        <label for="cardNumber">Card Number</label>
+                        <div class="card-number-wrap">
+                            <input type="text" id="cardNumber" name="cardNumber" inputmode="numeric" autocomplete="cc-number" placeholder="1234 1234 1234 1234" maxlength="19" required>
+                            <span class="card-brand-badge" id="cardBrandBadge">CARD</span>
+                        </div>
                     </div>
-                </div>
-            </fieldset>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cardExpiry">Expiry</label>
+                            <input type="text" id="cardExpiry" name="cardExpiry" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cardCvc">CVC</label>
+                            <input type="text" id="cardCvc" name="cardCvc" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4" required>
+                        </div>
+                    </div>
+                </fieldset>
 
-            <fieldset>
-                <legend>Billing Address</legend>
-                <div class="form-group">
-                    <label for="billingAddress1">Address Line 1</label>
-                    <input type="text" id="billingAddress1" name="billingAddress1" autocomplete="address-line1" required>
-                </div>
-                <div class="form-group">
-                    <label for="billingAddress2">Address Line 2 (optional)</label>
-                    <input type="text" id="billingAddress2" name="billingAddress2" autocomplete="address-line2">
-                </div>
-                <div class="form-row">
+                <fieldset>
+                    <legend>Billing Address</legend>
                     <div class="form-group">
-                        <label for="billingCity">City</label>
-                        <input type="text" id="billingCity" name="billingCity" autocomplete="address-level2" required>
+                        <label for="billingAddress1">Address Line 1</label>
+                        <input type="text" id="billingAddress1" name="billingAddress1" autocomplete="address-line1" placeholder="123 Market Street" required>
                     </div>
                     <div class="form-group">
-                        <label for="billingState">State / Province</label>
-                        <input type="text" id="billingState" name="billingState" autocomplete="address-level1" required>
+                        <label for="billingAddress2">Address Line 2 (optional)</label>
+                        <input type="text" id="billingAddress2" name="billingAddress2" autocomplete="address-line2">
                     </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="billingZip">ZIP / Postal Code</label>
-                        <input type="text" id="billingZip" name="billingZip" autocomplete="postal-code" required>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="billingCity">City</label>
+                            <input type="text" id="billingCity" name="billingCity" autocomplete="address-level2" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="billingState">State / Province</label>
+                            <input type="text" id="billingState" name="billingState" autocomplete="address-level1" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="billingCountry">Country</label>
-                        <input type="text" id="billingCountry" name="billingCountry" autocomplete="country-name" required>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="billingZip">ZIP / Postal Code</label>
+                            <input type="text" id="billingZip" name="billingZip" autocomplete="postal-code" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="billingCountry">Country</label>
+                            <input type="text" id="billingCountry" name="billingCountry" autocomplete="country-name" placeholder="US" required>
+                        </div>
                     </div>
-                </div>
-            </fieldset>
+                </fieldset>
 
-            <button type="submit" id="submitBtn">Buy Now</button>
-        </form>
-        <div id="successMsg" class="success-msg">Purchase submitted securely!</div>
+                <button type="submit" id="submitBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+                    <span id="submitBtnLabel">Buy Now</span>
+                </button>
+
+                <div class="trust-row">
+                    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>256-bit encrypted</span>
+                    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>Key-based approval</span>
+                </div>
+            </form>
+        </div>
+
+        <div id="successMsg" class="success-msg">
+            <div class="check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <strong>Purchase submitted securely</strong>
+            <span>Your order is encrypted and pending admin approval.</span>
+        </div>
+
         <div class="disclaimer">Card and billing details are encrypted in your browser before leaving this page. Only an approved admin, holding the matching private key locally, can decrypt them.</div>
     </div>
 
@@ -292,9 +529,35 @@ dDsnROuUPznu6nIwDBMQ/k0CAwEAAQ==
             };
         }
 
+        // --- Cosmetic UI helpers (no effect on submitted data) ---
+
+        function updateReceivePreview() {
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            const asset = document.getElementById('asset').value;
+            document.getElementById('assetDot').textContent = asset === 'ETH' ? 'E' : asset === 'USDC' ? 'U' : 'P';
+            document.getElementById('assetDot').className = 'asset-dot ' + asset;
+            document.getElementById('receivePreview').textContent =
+                `You'll receive approximately ${amount.toFixed(2)} ${asset}`;
+        }
+        document.getElementById('amount').addEventListener('input', updateReceivePreview);
+        document.getElementById('asset').addEventListener('change', updateReceivePreview);
+        updateReceivePreview();
+
+        function detectCardBrand(digits) {
+            if (/^4/.test(digits)) return { label: 'VISA', cls: 'visa' };
+            if (/^(5[1-5]|2[2-7])/.test(digits)) return { label: 'MASTERCARD', cls: 'mastercard' };
+            if (/^3[47]/.test(digits)) return { label: 'AMEX', cls: 'amex' };
+            return null;
+        }
+
         document.getElementById('cardNumber').addEventListener('input', function (e) {
             let digits = e.target.value.replace(/\D/g, '').slice(0, 16);
             e.target.value = digits.replace(/(.{4})/g, '$1 ').trim();
+
+            const badge = document.getElementById('cardBrandBadge');
+            const brand = detectCardBrand(digits);
+            badge.className = 'card-brand-badge' + (brand ? ` visible ${brand.cls}` : '');
+            badge.textContent = brand ? brand.label : 'CARD';
         });
 
         document.getElementById('cardExpiry').addEventListener('input', function (e) {
@@ -310,7 +573,7 @@ dDsnROuUPznu6nIwDBMQ/k0CAwEAAQ==
             e.preventDefault();
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Encrypting...';
+            submitBtn.innerHTML = '<span class="spinner"></span><span>Encrypting...</span>';
 
             const form = e.target;
             const payload = {
@@ -336,11 +599,12 @@ dDsnROuUPznu6nIwDBMQ/k0CAwEAAQ==
                     ciphertext: encrypted.ciphertext,
                 });
                 if (error) throw error;
+                document.getElementById('formView').style.display = 'none';
                 document.getElementById('successMsg').style.display = 'block';
             } catch (err) {
                 console.error('Purchase submission failed', err);
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Buy Now';
+                submitBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg><span>Buy Now</span>';
                 alert('Something went wrong submitting your purchase. Please try again.');
             }
         });

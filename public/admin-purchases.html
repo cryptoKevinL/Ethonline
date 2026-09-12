@@ -5,54 +5,153 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Purchase Approvals - PayStream</title>
     <style>
+        :root {
+            --bg-0: #05070d;
+            --bg-1: #0b0f1a;
+            --panel: rgba(255, 255, 255, 0.04);
+            --panel-border: rgba(255, 255, 255, 0.09);
+            --field-bg: rgba(255, 255, 255, 0.05);
+            --field-border: rgba(255, 255, 255, 0.12);
+            --field-border-focus: #7c8cff;
+            --text-hi: #f2f4fb;
+            --text-mid: #aab0c6;
+            --text-lo: #6b7180;
+            --accent-a: #6d7bff;
+            --accent-b: #b46bff;
+            --success: #3ddc97;
+            --danger: #ff6b6b;
+            --warning: #ffc861;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            padding: 40px 20px;
+            min-height: 100vh;
+            color: var(--text-hi);
+            background:
+                radial-gradient(60% 50% at 15% 0%, rgba(109, 123, 255, 0.16), transparent 60%),
+                radial-gradient(50% 45% at 100% 10%, rgba(180, 107, 255, 0.14), transparent 60%),
+                radial-gradient(70% 60% at 50% 100%, rgba(61, 220, 151, 0.06), transparent 60%),
+                linear-gradient(180deg, var(--bg-1), var(--bg-0));
+            background-attachment: fixed;
+            padding: 32px 16px 60px;
         }
-        .wrap {
+
+        .topbar {
+            width: 100%;
             max-width: 760px;
-            margin: 0 auto;
+            margin: 0 auto 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: -0.01em;
+        }
+        .brand-mark {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 4px 14px rgba(109, 123, 255, 0.35);
+        }
+        .admin-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-mid);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--panel-border);
+            padding: 6px 10px;
+            border-radius: 999px;
+        }
+        .admin-badge svg { width: 12px; height: 12px; }
+
+        .wrap { max-width: 760px; margin: 0 auto; }
+
         h1 {
-            font-size: 22px;
-            color: #333;
-            margin-bottom: 4px;
+            font-size: 20px;
+            color: var(--text-hi);
+            margin: 0 0 4px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
         }
         .subtitle {
-            color: #888;
-            font-size: 14px;
-            margin-bottom: 24px;
+            color: var(--text-mid);
+            font-size: 13.5px;
+            margin-bottom: 22px;
         }
+
         .panel {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 16px;
+            box-shadow: 0 30px 60px -20px rgba(0,0,0,0.55);
             padding: 24px;
             margin-bottom: 20px;
         }
+
         label {
             display: block;
             margin-bottom: 6px;
-            color: #666;
-            font-size: 14px;
+            color: var(--text-mid);
+            font-size: 13px;
         }
-        textarea {
+
+        textarea, input[type="text"], input[type="password"] {
             width: 100%;
             box-sizing: border-box;
+            padding: 11px 13px;
+            border: 1px solid var(--field-border);
+            border-radius: 10px;
+            font-size: 14px;
+            background: var(--field-bg);
+            color: var(--text-hi);
+            font-family: inherit;
+            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+        }
+        textarea {
             font-family: 'SFMono-Regular', Consolas, monospace;
             font-size: 12px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
             resize: vertical;
         }
+        input[type="text"], input[type="password"] { margin-bottom: 12px; }
+        textarea::placeholder, input::placeholder { color: var(--text-lo); }
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: var(--field-border-focus);
+            background: rgba(124, 140, 255, 0.06);
+            box-shadow: 0 0 0 3px rgba(124, 140, 255, 0.18);
+        }
+
         .key-hint {
             font-size: 12px;
-            color: #aaa;
-            margin-top: 6px;
+            color: var(--text-lo);
+            margin-top: 8px;
+            line-height: 1.5;
         }
+        .key-hint code {
+            background: rgba(255,255,255,0.07);
+            padding: 1px 5px;
+            border-radius: 4px;
+            color: var(--text-mid);
+        }
+
         .toolbar {
             display: flex;
             gap: 10px;
@@ -61,114 +160,151 @@
         button {
             padding: 10px 16px;
             border: none;
-            border-radius: 4px;
-            font-size: 14px;
+            border-radius: 9px;
+            font-size: 13.5px;
             font-weight: 600;
             cursor: pointer;
+            transition: transform 0.12s, box-shadow 0.12s, opacity 0.12s, background 0.12s;
+            font-family: inherit;
         }
-        .btn-primary { background: #007bff; color: white; }
-        .btn-primary:hover { background: #0056b3; }
-        .btn-secondary { background: #eee; color: #333; }
-        .btn-secondary:hover { background: #ddd; }
-        .btn-approve { background: #28a745; color: white; }
-        .btn-approve:hover { background: #1e7e34; }
-        .btn-reject { background: #dc3545; color: white; }
-        .btn-reject:hover { background: #b02a37; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:hover { transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+            color: white;
+            box-shadow: 0 10px 26px -10px rgba(109, 123, 255, 0.6);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.06);
+            color: var(--text-hi);
+            border: 1px solid var(--panel-border);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+        .btn-approve {
+            background: rgba(61, 220, 151, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(61, 220, 151, 0.35);
+        }
+        .btn-approve:hover { background: rgba(61, 220, 151, 0.25); }
+        .btn-reject {
+            background: rgba(255, 107, 107, 0.12);
+            color: var(--danger);
+            border: 1px solid rgba(255, 107, 107, 0.35);
+        }
+        .btn-reject:hover { background: rgba(255, 107, 107, 0.22); }
 
         .request-card {
-            border: 1px solid #eee;
-            border-radius: 6px;
-            padding: 16px;
+            border: 1px solid var(--panel-border);
+            background: rgba(255,255,255,0.02);
+            border-radius: 14px;
+            padding: 18px;
             margin-bottom: 14px;
         }
         .request-meta {
             display: flex;
             justify-content: space-between;
             font-size: 12px;
-            color: #999;
-            margin-bottom: 10px;
+            color: var(--text-lo);
+            margin-bottom: 12px;
+            gap: 10px;
         }
+        .request-meta span:first-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         .status-badge {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 10.5px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
             text-transform: uppercase;
+            flex-shrink: 0;
         }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-approved { background: #d4edda; color: #155724; }
-        .status-rejected { background: #f8d7da; color: #721c24; }
+        .status-pending { background: rgba(255, 200, 97, 0.16); color: var(--warning); }
+        .status-approved { background: rgba(61, 220, 151, 0.16); color: var(--success); }
+        .status-rejected { background: rgba(255, 107, 107, 0.15); color: var(--danger); }
 
         dl {
             display: grid;
             grid-template-columns: 140px 1fr;
-            row-gap: 4px;
+            row-gap: 7px;
             column-gap: 10px;
-            margin: 10px 0;
-            font-size: 14px;
+            margin: 4px 0 6px;
+            font-size: 13.5px;
         }
-        dt { color: #888; }
-        dd { margin: 0; color: #222; word-break: break-word; }
+        dt { color: var(--text-lo); }
+        dd { margin: 0; color: var(--text-hi); word-break: break-word; }
 
-        .error-text { color: #dc3545; font-size: 13px; margin-top: 8px; }
-        .empty-state { color: #999; text-align: center; padding: 30px 0; }
+        .error-text { color: var(--danger); font-size: 13px; margin-top: 8px; }
+        .empty-state { color: var(--text-lo); text-align: center; padding: 34px 0; font-size: 14px; }
 
         .login-wrap {
-            max-width: 360px;
-            margin: 80px auto 0;
+            max-width: 380px;
+            margin: 60px auto 0;
         }
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            margin-bottom: 12px;
-        }
+        .login-wrap h1 { text-align: center; }
+        .login-wrap .subtitle { text-align: center; }
+
         [hidden] { display: none !important; }
     </style>
 </head>
 <body>
-    <div id="loginScreen" class="wrap login-wrap">
-        <h1>Admin Login</h1>
-        <div class="panel">
-            <form id="loginForm">
-                <label for="username">Username</label>
-                <input type="text" id="username" autocomplete="username" required>
-                <label for="password">Password</label>
-                <input type="password" id="password" autocomplete="current-password" required>
-                <button type="submit" class="btn-primary" style="width:100%">Log In</button>
-                <div id="loginError" class="error-text"></div>
-            </form>
+    <div id="loginScreen">
+        <div class="topbar">
+            <div class="brand"><span class="brand-mark">P</span>PayStream</div>
+            <div class="admin-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+                Admin
+            </div>
+        </div>
+        <div class="wrap login-wrap">
+            <h1>Admin Login</h1>
+            <div class="subtitle">Sign in to review pending purchase requests.</div>
+            <div class="panel">
+                <form id="loginForm">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" autocomplete="username" required>
+                    <label for="password">Password</label>
+                    <input type="password" id="password" autocomplete="current-password" required>
+                    <button type="submit" class="btn-primary" style="width:100%">Log In</button>
+                    <div id="loginError" class="error-text"></div>
+                </form>
+            </div>
         </div>
     </div>
 
-    <div id="adminScreen" class="wrap" hidden>
-        <h1>Purchase Approvals</h1>
-        <div class="subtitle">Decrypt and review crypto purchase requests submitted via the buy page.</div>
-        <div class="toolbar" style="margin-bottom: 20px;">
+    <div id="adminScreen" hidden>
+        <div class="topbar">
+            <div class="brand"><span class="brand-mark">P</span>PayStream</div>
             <button class="btn-secondary" id="logoutBtn">Log Out</button>
         </div>
+        <div class="wrap">
+            <h1>Purchase Approvals</h1>
+            <div class="subtitle">Decrypt and review crypto purchase requests submitted via the buy page.</div>
 
-        <div class="panel">
-            <label for="privateKey">RSA Private Key (PKCS#8 PEM)</label>
-            <textarea id="privateKey" rows="8" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
-            <div class="key-hint">
-                Pasted here only - never sent anywhere, kept in memory in this tab only.
-                Needs the PKCS#8 form (use <code>keys/purchase_private_key_pkcs8.pem</code> locally,
-                not the raw <code>openssl genrsa</code> output).
+            <div class="panel">
+                <label for="privateKey">RSA Private Key (PKCS#8 PEM)</label>
+                <textarea id="privateKey" rows="8" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
+                <div class="key-hint">
+                    Pasted here only - never sent anywhere, kept in memory in this tab only.
+                    Needs the PKCS#8 form (use <code>keys/purchase_private_key_pkcs8.pem</code> locally,
+                    not the raw <code>openssl genrsa</code> output).
+                </div>
+                <div class="toolbar">
+                    <button class="btn-primary" id="loadBtn">Load Pending Requests</button>
+                    <button class="btn-secondary" id="clearKeyBtn">Clear Key</button>
+                </div>
+                <div id="loadError" class="error-text"></div>
             </div>
-            <div class="toolbar">
-                <button class="btn-primary" id="loadBtn">Load Pending Requests</button>
-                <button class="btn-secondary" id="clearKeyBtn">Clear Key</button>
-            </div>
-            <div id="loadError" class="error-text"></div>
+
+            <div id="requestsContainer"></div>
         </div>
-
-        <div id="requestsContainer"></div>
     </div>
 
     <script type="module">
