@@ -16,9 +16,12 @@ alter table admin_credentials enable row level security;
 -- Intentionally no policies: locked to anon/authenticated, only readable
 -- from inside the security-definer function below (or the service role).
 
-insert into admin_credentials (username, password_hash)
-values ('Adm1n', extensions.crypt('Pay$tream!@34!@34', extensions.gen_salt('bf')))
-on conflict (username) do nothing;
+-- No seed data here on purpose: a real password must never be committed to a
+-- migration file (it happened once already - see
+-- supabase/migrations/revoke_leaked_admin_credential.sql). Set/rotate the
+-- admin password with the service-role-only set_admin_password() function
+-- from that migration, e.g. via the Supabase SQL editor:
+--   select set_admin_password('Adm1n', 'a-new-password-you-choose');
 
 create or replace function verify_admin_login(p_username text, p_password text)
 returns boolean

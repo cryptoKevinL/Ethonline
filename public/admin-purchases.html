@@ -315,7 +315,12 @@
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lbWdwb3d6ZHFldXdkcHVlYWpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxODA2MTMsImV4cCI6MjA3NTc1NjYxM30.k_AkdRumCYcF2CS0437VjRWAkorz9N7EZGWuMzCuAFk'
         );
 
-        const SESSION_KEY = 'paystream_admin_authed';
+        // Credentials are kept in memory only (never sessionStorage/localStorage) and
+        // sent with every admin-purchases call - the edge function re-checks them
+        // server-side on each request via the service role key. RLS on
+        // purchase_requests no longer allows the anon key to read or update rows
+        // directly, so this credential check can't be bypassed from the browser.
+        let adminCreds = null;
 
         function showAdminScreen() {
             document.getElementById('loginScreen').hidden = true;
@@ -327,8 +332,21 @@
             document.getElementById('loginScreen').hidden = false;
         }
 
-        if (sessionStorage.getItem(SESSION_KEY) === 'true') {
-            showAdminScreen();
+        async function callAdminPurchases(creds, action, extra) {
+            const { data, error } = await supabase.functions.invoke('admin-purchases', {
+                body: { ...creds, action, ...extra },
+            });
+            if (error) {
+                let message = error.message;
+                try {
+                    const parsed = await error.context.json();
+                    if (parsed?.error) message = parsed.error;
+                } catch {
+                    // ignore, fall back to error.message
+                }
+                throw new Error(message);
+            }
+            return data;
         }
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -339,27 +357,20 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            const { data, error } = await supabase.rpc('verify_admin_login', {
-                p_username: username,
-                p_password: password,
-            });
-
-            if (error) {
-                loginError.textContent = 'Login failed: ' + error.message;
+            try {
+                await callAdminPurchases({ username, password }, 'list');
+            } catch (err) {
+                loginError.textContent = err.message;
                 return;
             }
 
-            if (data === true) {
-                sessionStorage.setItem(SESSION_KEY, 'true');
-                document.getElementById('password').value = '';
-                showAdminScreen();
-            } else {
-                loginError.textContent = 'Invalid username or password.';
-            }
+            adminCreds = { username, password };
+            document.getElementById('password').value = '';
+            showAdminScreen();
         });
 
         document.getElementById('logoutBtn').addEventListener('click', () => {
-            sessionStorage.removeItem(SESSION_KEY);
+            adminCreds = null;
             document.getElementById('privateKey').value = '';
             document.getElementById('requestsContainer').innerHTML = '';
             showLoginScreen();
@@ -460,12 +471,13 @@
                 el.querySelectorAll('[data-action]').forEach((btn) => {
                     btn.addEventListener('click', async () => {
                         btn.disabled = true;
-                        const { error: updateError } = await supabase
-                            .from('purchase_requests')
-                            .update({ status: btn.dataset.action, decided_at: new Date().toISOString() })
-                            .eq('id', row.id);
-                        if (updateError) {
-                            alert('Failed to update status: ' + updateError.message);
+                        try {
+                            await callAdminPurchases(adminCreds, 'decide', {
+                                id: row.id,
+                                decision: btn.dataset.action,
+                            });
+                        } catch (err) {
+                            alert('Failed to update status: ' + err.message);
                             btn.disabled = false;
                             return;
                         }
@@ -502,13 +514,11 @@
                 return;
             }
 
-            const { data: rows, error } = await supabase
-                .from('purchase_requests')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                loadError.textContent = 'Failed to load requests: ' + error.message;
+            let rows;
+            try {
+                ({ rows } = await callAdminPurchases(adminCreds, 'list'));
+            } catch (err) {
+                loadError.textContent = 'Failed to load requests: ' + err.message;
                 return;
             }
 
