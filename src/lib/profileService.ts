@@ -1,5 +1,19 @@
 import { supabase, Employer, Employee, Employment, Wallet, EmployerProfileData, EmployeeProfileData, Payment } from './supabase'
 
+interface BlockscoutTx {
+  hash: string;
+  timeStamp: string;
+  value: string;
+  from?: string;
+  to?: string;
+  isError: string;
+  methodId: string;
+  gasUsed: string;
+  gasPrice: string;
+  blockNumber: string;
+  transactionIndex: string;
+}
+
 export class ProfileService {
   // Save or update employer profile
   static async saveEmployerProfile(profileData: EmployerProfileData & { userId: string }) {
@@ -652,7 +666,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
         
         // Handle full name search (e.g., "John Doe")
         const nameParts = query.trim().split(' ');
-        let searchQuery = '';
+        const searchQuery = '';
         
         let employeeResults;
         let employeeError;
@@ -1552,7 +1566,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
       const data = await response.json();
       
       // Format the transaction data from Blockscout API response
-      const formattedTransactions = data.result?.map((tx: any) => ({
+      const formattedTransactions = data.result?.map((tx: BlockscoutTx) => ({
         hash: tx.hash,
         timestamp: tx.timeStamp,
         value: tx.value,
@@ -1594,11 +1608,11 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
       const data = await response.json();
       
       // Filter for transactions from the employer (payments)
-      const paymentTransactions = data.result?.filter((tx: any) => 
+      const paymentTransactions = data.result?.filter((tx: BlockscoutTx) => 
         tx.from?.toLowerCase() === employerAddress.toLowerCase() &&
         parseInt(tx.value) > 0 &&
         tx.isError === '0'
-      ).map((tx: any) => ({
+      ).map((tx: BlockscoutTx) => ({
         hash: tx.hash,
         timestamp: tx.timeStamp,
         value: tx.value,
@@ -1623,7 +1637,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
   }
 
   // Send email notification for new payment
-  static async sendPaymentNotification(employeeEmail: string, paymentData: any) {
+  static async sendPaymentNotification(employeeEmail: string, paymentData: Record<string, unknown>) {
     try {
       // This would integrate with your email service (SendGrid, AWS SES, etc.)
       // For now, we'll just log the notification
@@ -1657,7 +1671,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
   }
 
   // Get real-time transaction monitoring setup - uses Supabase real-time subscriptions
-  static setupTransactionMonitoring(employeeWallet: string, employerAddress: string, onNewTransaction: (tx: any) => void) {
+  static setupTransactionMonitoring(employeeWallet: string, employerAddress: string, onNewTransaction: (tx: Record<string, unknown>) => void) {
     try {
       console.log('🔔 Setting up real-time payment monitoring via Supabase...');
       console.log('📧 Monitoring for employee wallet:', employeeWallet);
@@ -2160,7 +2174,7 @@ static async getEmployeeWalletData(employeeId: string, employmentId?: string) {
   // Update payment status (e.g., when transaction is confirmed)
   static async updatePaymentStatus(paymentId: string, status: 'pending' | 'confirmed' | 'failed', tx_hash?: string) {
     try {
-      const updateData: any = { status };
+      const updateData: { status: string; tx_hash?: string } = { status };
       if (tx_hash) {
         updateData.tx_hash = tx_hash;
       }

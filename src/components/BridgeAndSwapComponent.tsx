@@ -14,6 +14,7 @@ import {
 import { useNexus } from '@/providers/NexusProvider';
 import { useToast } from '@/hooks/use-toast';
 import { Contract, parseUnits, formatUnits, BrowserProvider } from 'ethers';
+import type { Eip1193Provider } from 'ethers';
 import { CONTRACT_ADDRESSES, SWAP_ABI, ERC20_ABI } from '@/lib/contracts';
 import { useWalletClient, useSwitchChain } from 'wagmi';
 import { sepolia } from 'wagmi/chains';
@@ -96,7 +97,7 @@ export function BridgeAndSwapComponent() {
 
       // Get PYUSD balance on Sepolia
       if (walletClient) {
-        const provider = new BrowserProvider(walletClient as any);
+        const provider = new BrowserProvider(walletClient as unknown as Eip1193Provider);
         const signer = await provider.getSigner();
         const pyusdContract = new Contract(CONTRACT_ADDRESSES.PYUSD, ERC20_ABI, signer);
         const balance = await pyusdContract.balanceOf(await signer.getAddress());
@@ -181,7 +182,7 @@ export function BridgeAndSwapComponent() {
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
-      const provider = new BrowserProvider(walletClient as any);
+      const provider = new BrowserProvider(walletClient as unknown as Eip1193Provider);
       const signer = await provider.getSigner();
 
       const swapContract = new Contract(CONTRACT_ADDRESSES.SWAP, SWAP_ABI, signer);
@@ -225,7 +226,7 @@ export function BridgeAndSwapComponent() {
       }
 
       return { success: false };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Swap error:', error);
       throw error;
     }
@@ -319,17 +320,17 @@ export function BridgeAndSwapComponent() {
         setProgress({ step: 'select', message: '' });
       }, 3000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Bridge/Swap error:', error);
       
       setProgress({
         step: 'error',
-        message: error.message || 'Operation failed'
+        message: error instanceof Error ? error.message : 'Operation failed'
       });
 
       toast({
         title: "❌ Operation Failed",
-        description: error.message || "Failed to complete bridge/swap",
+        description: error instanceof Error ? error.message : "Failed to complete bridge/swap",
         variant: "destructive",
       });
 

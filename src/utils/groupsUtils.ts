@@ -59,7 +59,7 @@ export const convertToUSDC = (amount: number, token: string): number => {
   return amount * rate;
 };
 
-export const formatTotalPayment = (group: any): string => {
+export const formatTotalPayment = (group: { totalPaymentUSDC?: number; totalPayment: string }): string => {
   if (group.totalPaymentUSDC) {
     return `${Math.round(group.totalPaymentUSDC).toLocaleString()} USDC`;
   }
@@ -80,7 +80,7 @@ export const getChainName = (chainId: number): string => {
   return CHAIN_ID_TO_NAME[chainId] || 'Optimism Sepolia';
 };
 
-export const validateEmployeeData = (employee: any) => {
+export const validateEmployeeData = (employee: { wallet_address: string; first_name: string; last_name: string; payment_amount: string }) => {
   if (!employee.wallet_address || employee.wallet_address.trim() === '') {
     throw new Error(`Employee ${employee.first_name} ${employee.last_name} has no wallet address`);
   }

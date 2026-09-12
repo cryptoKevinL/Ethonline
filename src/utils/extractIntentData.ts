@@ -162,7 +162,24 @@ const parseAvaiIntentData = (html: string) => {
   }
 };
 
-export const extractIntentData = async (intent: any, address: string) => {
+export interface IntentLike {
+  id?: string;
+  intentId?: string;
+  requestId?: string;
+  sources?: Array<{ tokenAddress: string; value: string; chainID: number }>;
+  destinations?: Array<{ tokenAddress: string; value: string; recipient?: string; to?: string }>;
+  destinationChainID?: number;
+  deposited?: boolean;
+  fulfilled?: boolean;
+  refunded?: boolean;
+  expiry?: number;
+  sourceTxHash?: string;
+  depositTxHash?: string;
+  destTxHash?: string;
+  fulfillmentTxHash?: string;
+}
+
+export const extractIntentData = async (intent: IntentLike, address: string) => {
   try {
     const intentId = intent.id || intent.intentId || intent.requestId || '';
     
@@ -194,7 +211,7 @@ export const extractIntentData = async (intent: any, address: string) => {
           } else {
             return { symbol: 'ETH', decimals: 18 };
           }
-        } catch (e) {}
+        } catch (e) { /* not a bigint amount - fall through to the default token */ }
       }
       
       return { symbol: 'ETH', decimals: 18 };
@@ -235,7 +252,7 @@ export const extractIntentData = async (intent: any, address: string) => {
     }
     
     let destAmount = '', destCurrency = '', destTokenAddress = '', recipient = '';
-    let destinationChainId = intent.destinationChainID;
+    const destinationChainId = intent.destinationChainID;
     
     if (intent.destinations && intent.destinations.length > 0) {
       const destination = intent.destinations[0];

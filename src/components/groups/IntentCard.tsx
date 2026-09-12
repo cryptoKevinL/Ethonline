@@ -72,7 +72,7 @@ interface IntentCardProps {
 
 export function IntentCard({ intent, index }: IntentCardProps) {
   const { toast } = useToast();
-  const [paymentData, setPaymentData] = useState<any>(null);
+  const [paymentData, setPaymentData] = useState<{ recipient: string } | null>(null);
   const [isLoadingPaymentData, setIsLoadingPaymentData] = useState(false);
   
   // Determine the effective status based on payment data availability
@@ -426,7 +426,7 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                                   console.log('📊 Total regular transactions found:', transactions.result.length);
                                   
                                   // Find transaction where 'to' field matches employer address
-                                  employerTx = transactions.result.find((tx: any) => 
+                                  employerTx = transactions.result.find((tx: { to?: string; hash?: string; transaction_hash?: string }) => 
                                     tx.to && tx.to.toLowerCase() === intent.sender.toLowerCase()
                                   );
                                   
@@ -454,7 +454,7 @@ export function IntentCard({ intent, index }: IntentCardProps) {
                                     } else {
                                       console.log('❌ No transaction found in internal transactions either');
                                       console.log('🔍 Available internal transactions:');
-                                      internalTransactions.items.slice(0, 5).forEach((tx: any, index: number) => {
+                                      internalTransactions.items.slice(0, 5).forEach((tx: { from?: { hash?: string }; to?: { hash?: string }; transaction_hash?: string }, index: number) => {
                                         console.log(`  ${index + 1}. From: ${tx.from?.hash}, To: ${tx.to?.hash}, Hash: ${tx.transaction_hash}`);
                                       });
                                     }

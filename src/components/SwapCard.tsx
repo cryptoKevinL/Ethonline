@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowDownUp, ChevronDown } from 'lucide-react';
 import { Contract, parseUnits, formatUnits } from 'ethers';
+import type { BrowserProvider, JsonRpcSigner } from 'ethers';
 import { toast } from '@/hooks/use-toast';
 import { CONTRACT_ADDRESSES, SWAP_ABI, ERC20_ABI } from '@/lib/contracts';
 import {
@@ -15,8 +16,8 @@ import {
 } from "@/components/ui/select";
 
 interface SwapCardProps {
-  provider: any;
-  signer: any;
+  provider: BrowserProvider;
+  signer: JsonRpcSigner;
   account: string;
 }
 
@@ -139,10 +140,10 @@ export function SwapCard({ provider, signer, account }: SwapCardProps) {
       setFromAmount('');
       setToAmount('');
       await updateBalance();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({ 
         title: "Swap Failed", 
-        description: error.message || "Transaction failed",
+        description: error instanceof Error ? error.message : "Transaction failed",
         variant: "destructive" 
       });
     } finally {

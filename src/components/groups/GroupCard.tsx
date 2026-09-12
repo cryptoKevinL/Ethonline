@@ -11,6 +11,7 @@ import { Contract, parseUnits, formatUnits } from 'ethers';
 import { CONTRACT_ADDRESSES, SWAP_ABI, ERC20_ABI } from '@/lib/contracts';
 import { useWalletClient, useSwitchChain } from 'wagmi';
 import { BrowserProvider } from 'ethers';
+import type { Eip1193Provider } from 'ethers';
 import { sepolia } from 'wagmi/chains';
 
 interface Employee {
@@ -194,13 +195,13 @@ export function GroupCard({
           
           // Wait a bit for the chain switch to complete
           await new Promise(resolve => setTimeout(resolve, 1500));
-        } catch (switchError: any) {
-          throw new Error(`Failed to switch to Sepolia: ${switchError.message}`);
+        } catch (switchError: unknown) {
+          throw new Error(`Failed to switch to Sepolia: ${switchError instanceof Error ? switchError.message : String(switchError)}`);
         }
       }
 
       // Step 2: Create ethers provider and signer from wagmi walletClient
-      const provider = new BrowserProvider(walletClient as any);
+      const provider = new BrowserProvider(walletClient as unknown as Eip1193Provider);
       const signer = await provider.getSigner();
 
       // Verify we're on Sepolia
@@ -351,14 +352,14 @@ export function GroupCard({
       }
 
       return false;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Swap error:', error);
       setSwapProgress(prev => ({
         ...prev,
         status: 'error',
         message: totalSwaps > 1 ? 
-          `❌ Swap ${currentSwap} of ${totalSwaps} failed: ${error.message || 'Unknown error'}` :
-          `❌ Swap failed: ${error.message || 'Unknown error'}`
+          `❌ Swap ${currentSwap} of ${totalSwaps} failed: ${error instanceof Error ? error.message : 'Unknown error'}` :
+          `❌ Swap failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       }));
       
       // Wait a bit to show error message
@@ -541,10 +542,10 @@ export function GroupCard({
         }
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "❌ Swap Failed",
-        description: error.message || "Failed to swap tokens on Sepolia",
+        description: error instanceof Error ? error.message : "Failed to swap tokens on Sepolia",
         variant: "destructive",
       });
     } finally {
