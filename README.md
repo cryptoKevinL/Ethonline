@@ -24,7 +24,7 @@ A modern Web3 payment management system for employers and employees, built with 
 
 - Node.js 18+ and npm
 - Supabase account and project
-- Web3 wallet (MetaMask, Ledger, etc.) 
+- Web3 wallet (MetaMask, Ledger, Trezor, etc.) 
 
 ### Installation
 
