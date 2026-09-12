@@ -18,6 +18,18 @@ import {
   validateEmployeeData 
 } from "@/utils/groupsUtils";
 import { extractIntentData } from "@/utils/extractIntentData";
+import type { IntentLike } from '@/utils/extractIntentData';
+
+type EmployeeRecord = {
+  id: string;
+  wallet_address: string;
+  payment_amount?: string;
+  first_name?: string;
+  last_name?: string;
+  token_contract?: string;
+  token_decimals?: number;
+  [key: string]: unknown;
+};
 
 // Helper function to get chain display info
 const getChainDisplayInfo = (chain: string) => {
@@ -233,8 +245,8 @@ const Groups = () => {
     currentPreference: 1,
     totalPreferences: 2
   });
-  const [userIntents, setUserIntents] = useState<any[]>([]);
-  const [allUserIntents, setAllUserIntents] = useState<any[]>([]);
+  const [userIntents, setUserIntents] = useState<IntentLike[]>([]);
+  const [allUserIntents, setAllUserIntents] = useState<IntentLike[]>([]);
   const [isLoadingIntents, setIsLoadingIntents] = useState(false);
   const [intentsPage, setIntentsPage] = useState(1);
   const [showAllIntents, setShowAllIntents] = useState(false);
@@ -359,7 +371,7 @@ const Groups = () => {
     }
   }, [isInitialized, nexusSDK]);
 
-  const processGroupsWithWalletData = async (groups: any[]) => {
+  const processGroupsWithWalletData = async (groups: Array<Record<string, unknown>>) => {
     const processedGroups: Group[] = [];
     
     for (const group of groups) {
@@ -420,7 +432,7 @@ const Groups = () => {
     return processedGroups;
   };
 
-  const handlePayEmployeeWithPreference = async (group: Group, employee: any, preference: {chain: string, token: string}, preferenceNumber: number): Promise<PaymentResult> => {
+  const handlePayEmployeeWithPreference = async (group: Group, employee: EmployeeRecord, preference: {chain: string, token: string}, preferenceNumber: number): Promise<PaymentResult> => {
     if (!nexusSDK || !isInitialized) {
       toast({
         title: "Nexus SDK Not Ready",
@@ -451,7 +463,7 @@ const Groups = () => {
       const transferParams = {
         token: tokenType,
         amount: parseFloat(employee.payment_amount || '0').toString(),
-        chainId: destinationChainId as any,
+        chainId: destinationChainId,
         recipient: employee.wallet_address as `0x${string}`,
         sourceChains: [11155111, 84532] as number[]
       };
@@ -551,20 +563,20 @@ const Groups = () => {
             }
           }
         
-          const intentId = (transferResult as any).intentId || 
-                          (transferResult as any).intent_id || 
-                          (transferResult as any).id || 
+          const intentId = (transferResult as Record<string, string | undefined>).intentId || 
+                          (transferResult as Record<string, string | undefined>).intent_id || 
+                          (transferResult as Record<string, string | undefined>).id || 
                           '';
           
           const recentTxData = await getRecentTransactionHash();
           
           const firstTxHash = recentTxData.hash || 
-                             (transferResult as any).sourceTxHash || 
-                             (transferResult as any).depositTxHash || 
-                             (transferResult as any).initialTxHash ||
+                             (transferResult as Record<string, string | undefined>).sourceTxHash || 
+                             (transferResult as Record<string, string | undefined>).depositTxHash || 
+                             (transferResult as Record<string, string | undefined>).initialTxHash ||
                              transferResult.transactionHash || 
-                             (transferResult as any).txHash || 
-                             (transferResult as any).hash || 
+                             (transferResult as Record<string, string | undefined>).txHash || 
+                             (transferResult as Record<string, string | undefined>).hash || 
                              '';
           
           const depositSolverAddress = recentTxData.solverAddress || '';
@@ -614,7 +626,7 @@ const Groups = () => {
             solver_to_employer_hash: solverToEmployerHash,
             status: 'confirmed',
             preference_used: preferenceNumber
-          } as any; // Use any to bypass TypeScript check for now
+          };
 
           const paymentResult = await ProfileService.savePayment(paymentData);
 
@@ -710,7 +722,7 @@ const Groups = () => {
     }
   };
 
-const handlePayEmployee = async (group: Group, employee: any): Promise<PaymentResult> => {
+const handlePayEmployee = async (group: Group, employee: EmployeeRecord): Promise<PaymentResult> => {
     const paymentKey = `${group.id}-${employee.id}`;
     setIsProcessingPayment(paymentKey);
     setPaymentStatus(prev => ({ ...prev, [paymentKey]: 'processing' }));
@@ -752,7 +764,7 @@ const handlePayEmployee = async (group: Group, employee: any): Promise<PaymentRe
           const transferParams = {
             token: tokenType,
             amount: parseFloat(employee.payment_amount || '0').toString(),
-            chainId: destinationChainId as any,
+            chainId: destinationChainId,
             recipient: employee.wallet_address as `0x${string}`,
             sourceChains: [11155111, 84532] as number[]
           };
@@ -782,7 +794,7 @@ const handlePayEmployee = async (group: Group, employee: any): Promise<PaymentRe
               }
               // Fallback to other possible properties
               else if ('amount' in simulationResult.intent.fees) {
-                fees = parseFloat(String((simulationResult.intent.fees as any).amount)) || 0;
+                fees = parseFloat(String((simulationResult.intent.fees as { amount?: string | number }).amount)) || 0;
               }
             }
           }
@@ -821,8 +833,8 @@ const handlePayEmployee = async (group: Group, employee: any): Promise<PaymentRe
       
       // If either simulation failed, fall back to sequential trying
       if (!pref1Simulation || !pref2Simulation || 
-          (pref1Simulation as any).simulationFailed || 
-          (pref2Simulation as any).simulationFailed ||
+          (pref1Simulation as { simulationFailed?: boolean }).simulationFailed || 
+          (pref2Simulation as { simulationFailed?: boolean }).simulationFailed ||
           typeof pref1Simulation.fees !== 'number' ||
           typeof pref2Simulation.fees !== 'number') {
         console.log('⚠️ Simulation incomplete or failed, using preference 1 as default');
@@ -1093,7 +1105,7 @@ const handlePayEmployee = async (group: Group, employee: any): Promise<PaymentRe
       
       if (intents && intents.length > 0) {
         const processedIntents = await Promise.all(
-          intents.map(async (intent: any, index: number) => {
+          intents.map(async (intent: IntentLike, index: number) => {
             const intentData = await extractIntentData(intent, address || '');
             return {
               ...intentData,
@@ -1151,7 +1163,7 @@ const handlePayEmployee = async (group: Group, employee: any): Promise<PaymentRe
         if (connector) {
           const provider = await connector.getProvider();
           if (provider && typeof provider === 'object' && 'request' in provider) {
-            const txCount = await (provider as any).request({
+            const txCount = await (provider as { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> }).request({
               method: 'eth_getTransactionCount',
               params: [address, 'latest']
             });

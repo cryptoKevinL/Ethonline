@@ -66,7 +66,7 @@ const Employment = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [monitoringCleanup, setMonitoringCleanup] = useState<(() => void) | null>(null);
-  const [databasePayments, setDatabasePayments] = useState<any[]>([]);
+  const [databasePayments, setDatabasePayments] = useState<Array<Record<string, unknown>>>([]);
   const [isLoadingDatabasePayments, setIsLoadingDatabasePayments] = useState(false);
 
   // For testing - use well-known addresses

@@ -117,7 +117,7 @@ export default function SendCryptoToUser() {
   
   const [amount, setAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [employeeInfo, setEmployeeInfo] = useState<any>(null);
+  const [employeeInfo, setEmployeeInfo] = useState<{ first_name: string; last_name: string; email: string } | null>(null);
   const [isLoadingEmployee, setIsLoadingEmployee] = useState(true);
   const [selectedToken, setSelectedToken] = useState("eth");
   const [selectedChain, setSelectedChain] = useState("sepolia");

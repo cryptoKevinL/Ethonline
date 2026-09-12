@@ -1,7 +1,7 @@
 // Performance utilities to prevent memory leaks and browser crashes
 
 // Debounce function to prevent excessive API calls
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -16,7 +16,7 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Throttle function to limit function calls
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -57,15 +57,15 @@ export class TimeoutManager {
 
 // Memory-efficient console logging
 export const logger = {
-  log: (...args: any[]) => {
+  log: (...args: unknown[]) => {
     if (process.env.NODE_ENV === 'development') {
       console.log(...args);
     }
   },
-  error: (...args: any[]) => {
+  error: (...args: unknown[]) => {
     console.error(...args);
   },
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     console.warn(...args);
   }
 };

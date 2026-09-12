@@ -249,7 +249,7 @@ const Home = () => {
       const transferResult = await nexusSDK.transfer({
         token: 'ETH',
         amount: refuelAmount,
-        chainId: targetChainId as any,
+        chainId: targetChainId,
         recipient: address as `0x${string}`,
         sourceChains: [11155111] // Use Sepolia as source
       });
