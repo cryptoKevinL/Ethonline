@@ -302,10 +302,82 @@
             align-items: center;
             justify-content: center;
             margin: 0 auto 12px;
+            transition: background 0.2s, border-color 0.2s;
         }
         .success-msg .check svg { width: 22px; height: 22px; color: var(--success); }
+        .success-msg.rejected .check {
+            background: rgba(255, 107, 107, 0.14);
+            border-color: rgba(255, 107, 107, 0.4);
+        }
+        .success-msg.rejected .check svg { color: var(--danger); }
         .success-msg strong { display: block; font-size: 15px; margin-bottom: 4px; }
-        .success-msg span { color: var(--text-mid); font-size: 13px; }
+        .success-msg > span { color: var(--text-mid); font-size: 13px; }
+
+        .timeline {
+            margin-top: 26px;
+            text-align: left;
+        }
+        .timeline-step {
+            display: flex;
+            gap: 12px;
+            position: relative;
+            padding-bottom: 24px;
+        }
+        .timeline-step:last-child { padding-bottom: 0; }
+        .timeline-step:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: 11px;
+            top: 26px;
+            bottom: 0;
+            width: 2px;
+            background: var(--panel-border);
+        }
+        .timeline-step.done:not(:last-child)::before { background: rgba(109, 123, 255, 0.4); }
+
+        .step-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--field-border);
+            z-index: 1;
+            transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+        .step-dot svg { width: 12px; height: 12px; opacity: 0; color: #fff; transition: opacity 0.15s; }
+
+        .timeline-step.done .step-dot {
+            background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+            border-color: transparent;
+        }
+        .timeline-step.done .step-dot svg { opacity: 1; }
+
+        .timeline-step.active .step-dot {
+            border-color: var(--warning);
+            box-shadow: 0 0 0 4px rgba(255, 200, 97, 0.16);
+            animation: pulse-ring 1.8s ease-out infinite;
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(255, 200, 97, 0.35); }
+            70% { box-shadow: 0 0 0 7px rgba(255, 200, 97, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 200, 97, 0); }
+        }
+
+        .timeline-step.rejected .step-dot {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: var(--danger);
+        }
+        .timeline-step.rejected .step-dot svg { opacity: 1; color: var(--danger); }
+
+        .step-text { padding-top: 1px; }
+        .step-label { font-size: 13.5px; font-weight: 600; color: var(--text-hi); }
+        .step-sub { font-size: 12px; color: var(--text-mid); margin-top: 2px; }
+        .timeline-step:not(.done):not(.active):not(.rejected) .step-label { color: var(--text-lo); }
+        .timeline-step:not(.done):not(.active):not(.rejected) .step-sub { color: var(--text-lo); }
 
         .disclaimer {
             text-align: center;
@@ -432,10 +504,41 @@
 
         <div id="successMsg" class="success-msg">
             <div class="check">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+                <svg id="successCheckIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
             </div>
-            <strong>Purchase submitted securely</strong>
-            <span>Your order is encrypted and pending admin approval.</span>
+            <strong id="trackerTitle">Purchase submitted securely</strong>
+            <span id="trackerSubtitle">Your order is encrypted and pending admin approval.</span>
+
+            <div class="timeline">
+                <div class="timeline-step done">
+                    <div class="step-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div>
+                    <div class="step-text">
+                        <div class="step-label">Order Received</div>
+                        <div class="step-sub">We've got your request.</div>
+                    </div>
+                </div>
+                <div class="timeline-step done">
+                    <div class="step-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div>
+                    <div class="step-text">
+                        <div class="step-label">Payment Encrypted</div>
+                        <div class="step-sub">Card details secured in your browser.</div>
+                    </div>
+                </div>
+                <div class="timeline-step active" id="stepReview">
+                    <div class="step-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div>
+                    <div class="step-text">
+                        <div class="step-label">Pending Admin Review</div>
+                        <div class="step-sub" id="stepReviewSub">Checking for updates automatically...</div>
+                    </div>
+                </div>
+                <div class="timeline-step" id="stepFinal">
+                    <div class="step-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div>
+                    <div class="step-text">
+                        <div class="step-label" id="stepFinalLabel">Awaiting Decision</div>
+                        <div class="step-sub" id="stepFinalSub">We'll update this automatically.</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="disclaimer">Card and billing details are encrypted in your browser before leaving this page. Only an approved admin, holding the matching private key locally, can decrypt them.</div>
@@ -569,6 +672,69 @@ dDsnROuUPznu6nIwDBMQ/k0CAwEAAQ==
             e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
         });
 
+        const POLL_INTERVAL_MS = 35000; // poll every ~30-40s for an admin decision
+        let pollTimer = null;
+
+        function setTimelineState(status) {
+            const reviewStep = document.getElementById('stepReview');
+            const finalStep = document.getElementById('stepFinal');
+            const finalLabel = document.getElementById('stepFinalLabel');
+            const finalSub = document.getElementById('stepFinalSub');
+            const title = document.getElementById('trackerTitle');
+            const subtitle = document.getElementById('trackerSubtitle');
+            const successMsg = document.getElementById('successMsg');
+            const checkIcon = document.getElementById('successCheckIcon');
+
+            if (status === 'approved') {
+                reviewStep.className = 'timeline-step done';
+                finalStep.className = 'timeline-step done';
+                finalLabel.textContent = 'Approved';
+                finalSub.textContent = 'Your purchase has been approved.';
+                title.textContent = 'Purchase approved!';
+                subtitle.textContent = 'Your crypto purchase has been reviewed and approved.';
+                successMsg.classList.remove('rejected');
+                checkIcon.setAttribute('d', 'M5 13l4 4L19 7');
+            } else if (status === 'rejected') {
+                reviewStep.className = 'timeline-step done';
+                finalStep.className = 'timeline-step rejected';
+                finalLabel.textContent = 'Rejected';
+                finalSub.textContent = 'This purchase was not approved.';
+                title.textContent = 'Purchase rejected';
+                subtitle.textContent = 'This request was not approved. Contact support if you have questions.';
+                successMsg.classList.add('rejected');
+            } else {
+                reviewStep.className = 'timeline-step active';
+                finalStep.className = 'timeline-step';
+                finalLabel.textContent = 'Awaiting Decision';
+                finalSub.textContent = "We'll update this automatically.";
+                title.textContent = 'Purchase submitted securely';
+                subtitle.textContent = 'Your order is encrypted and pending admin approval.';
+                successMsg.classList.remove('rejected');
+            }
+        }
+
+        function startTracking(requestId) {
+            setTimelineState('pending');
+            document.getElementById('formView').style.display = 'none';
+            document.getElementById('successMsg').style.display = 'block';
+
+            pollTimer = setInterval(async () => {
+                const { data, error } = await supabase
+                    .from('purchase_requests')
+                    .select('status')
+                    .eq('id', requestId)
+                    .single();
+
+                if (error || !data) return;
+
+                if (data.status !== 'pending') {
+                    setTimelineState(data.status);
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                }
+            }, POLL_INTERVAL_MS);
+        }
+
         document.getElementById('purchaseForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             const submitBtn = document.getElementById('submitBtn');
@@ -593,14 +759,17 @@ dDsnROuUPznu6nIwDBMQ/k0CAwEAAQ==
 
             try {
                 const encrypted = await encryptPayload(payload);
-                const { error } = await supabase.from('purchase_requests').insert({
-                    encrypted_key: encrypted.encryptedKey,
-                    iv: encrypted.iv,
-                    ciphertext: encrypted.ciphertext,
-                });
+                const { data: inserted, error } = await supabase
+                    .from('purchase_requests')
+                    .insert({
+                        encrypted_key: encrypted.encryptedKey,
+                        iv: encrypted.iv,
+                        ciphertext: encrypted.ciphertext,
+                    })
+                    .select('id')
+                    .single();
                 if (error) throw error;
-                document.getElementById('formView').style.display = 'none';
-                document.getElementById('successMsg').style.display = 'block';
+                startTracking(inserted.id);
             } catch (err) {
                 console.error('Purchase submission failed', err);
                 submitBtn.disabled = false;
