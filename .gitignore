@@ -25,3 +25,7 @@ dist-ssr
 .env
 .vercel
 .env*.local
+
+# Local key material - never commit private keys
+keys/
+*.pem
