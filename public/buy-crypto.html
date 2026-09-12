@@ -720,7 +720,7 @@ dDsnROuUPznu6nIwDBMQ/k0CAwEAAQ==
 
             pollTimer = setInterval(async () => {
                 const { data, error } = await supabase
-                    .from('purchase_requests')
+                    .from('purchase_request_status')
                     .select('status')
                     .eq('id', requestId)
                     .single();
@@ -759,17 +759,24 @@ dDsnROuUPznu6nIwDBMQ/k0CAwEAAQ==
 
             try {
                 const encrypted = await encryptPayload(payload);
-                const { data: inserted, error } = await supabase
+                // Generate the id client-side and insert with return=minimal:
+                // purchase_requests has no anon SELECT policy (locked down
+                // deliberately - see lock_down_purchase_requests_rls.sql), and
+                // Postgres RLS requires RETURNING to pass the SELECT policy
+                // even on a successful insert, so asking for the row back here
+                // would fail. Status is polled separately via the
+                // purchase_request_status view.
+                const requestId = crypto.randomUUID();
+                const { error } = await supabase
                     .from('purchase_requests')
                     .insert({
+                        id: requestId,
                         encrypted_key: encrypted.encryptedKey,
                         iv: encrypted.iv,
                         ciphertext: encrypted.ciphertext,
-                    })
-                    .select('id')
-                    .single();
+                    });
                 if (error) throw error;
-                startTracking(inserted.id);
+                startTracking(requestId);
             } catch (err) {
                 console.error('Purchase submission failed', err);
                 submitBtn.disabled = false;
