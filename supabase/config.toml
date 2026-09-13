@@ -26,3 +26,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/admin-purchases/deno.json"
 entrypoint = "./functions/admin-purchases/index.ts"
+
+[functions.team-verify]
+enabled = true
+verify_jwt = true
+import_map = "./functions/team-verify/deno.json"
+entrypoint = "./functions/team-verify/index.ts"
