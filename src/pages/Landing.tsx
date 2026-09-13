@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, Shield, Wallet } from "lucide-react";
@@ -70,6 +70,16 @@ const Landing = () => {
           }}
           className="absolute bottom-20 left-20 w-96 h-96 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-3xl"
         />
+      </div>
+
+      {/* AnvilStack team entry (Top Left) */}
+      <div className="absolute top-6 left-6 z-20">
+        <Link
+          to="/team/verify"
+          className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
+        >
+          AnvilStack team? Verify with Google
+        </Link>
       </div>
 
       {/* Wallet Connection in Top Right */}

@@ -18,6 +18,8 @@ import EditGroup from "./pages/admin/EditGroup";
 import SendCrypto from "./pages/SendCrypto";
 import SendCryptoToUser from "./pages/SendCryptoToUser";
 import NotFound from "./pages/NotFound";
+import TeamVerify from "./pages/team/Verify";
+import TeamStatus from "./pages/team/Status";
 import { NotificationProvider, TransactionPopupProvider } from "@blockscout/app-sdk";
 
 const queryClient = new QueryClient();
@@ -118,6 +120,10 @@ const App = () => (
                   } 
                 />
                 
+                {/* AnvilStack team verification + internal status (see docs/team-verification-and-status-site.md) */}
+                <Route path="/team/verify" element={<TeamVerify />} />
+                <Route path="/team/status" element={<TeamStatus />} />
+
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
