@@ -1,0 +1,12 @@
+{
+  "name": "node-config-reader",
+  "version": "1.2.0",
+  "description": "Standard configuration validation and reading utility for Node.js applications",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node ./lib/validate-config.js"
+  },
+  "dependencies": {
+    "axios": "^1^.6.0"
+  }
+}
