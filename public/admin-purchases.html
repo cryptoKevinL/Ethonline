@@ -428,6 +428,12 @@
             return JSON.parse(new TextDecoder().decode(plaintext));
         }
 
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (c) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+            }[c]));
+        }
+
         function renderRequest(row, data, error) {
             const el = document.createElement('div');
             el.className = 'request-card';
@@ -435,18 +441,19 @@
             const statusClass = `status-${row.status}`;
             let body;
             if (error) {
-                body = `<div class="error-text">Failed to decrypt: ${error.message}</div>`;
+                body = `<div class="error-text">Failed to decrypt: ${escapeHtml(error.message)}</div>`;
             } else {
                 body = `
                     <dl>
-                        <dt>Amount</dt><dd>${data.amount} ${data.asset}</dd>
-                        <dt>Name on Card</dt><dd>${data.cardName}</dd>
-                        <dt>Card Number</dt><dd>${data.cardNumber}</dd>
-                        <dt>Expiry</dt><dd>${data.cardExpiry}</dd>
-                        <dt>CVC</dt><dd>${data.cardCvc}</dd>
-                        <dt>Billing Address</dt><dd>${[data.billingAddress1, data.billingAddress2].filter(Boolean).join(', ')}</dd>
-                        <dt>City / State</dt><dd>${data.billingCity}, ${data.billingState}</dd>
-                        <dt>ZIP / Country</dt><dd>${data.billingZip}, ${data.billingCountry}</dd>
+                        <dt>Amount</dt><dd>${escapeHtml(data.amount)} ${escapeHtml(data.asset)}</dd>
+                        <dt>Name on Card</dt><dd>${escapeHtml(data.cardName)}</dd>
+                        <dt>Card Number</dt><dd>${escapeHtml(data.cardNumber)}</dd>
+                        <dt>Expiry</dt><dd>${escapeHtml(data.cardExpiry)}</dd>
+                        <dt>CVC</dt><dd>${escapeHtml(data.cardCvc)}</dd>
+                        <dt>Billing Address</dt><dd>${escapeHtml([data.billingAddress1, data.billingAddress2].filter(Boolean).join(', '))}</dd>
+                        <dt>City / State</dt><dd>${escapeHtml(data.billingCity)}, ${escapeHtml(data.billingState)}</dd>
+                        <dt>ZIP / Country</dt><dd>${escapeHtml(data.billingZip)}, ${escapeHtml(data.billingCountry)}</dd>
+                        ${data.comment ? `<dt>Comment</dt><dd style="white-space: pre-wrap;">${escapeHtml(data.comment)}</dd>` : ''}
                     </dl>
                 `;
             }
@@ -455,8 +462,8 @@
 
             el.innerHTML = `
                 <div class="request-meta">
-                    <span>${new Date(row.created_at).toLocaleString()} &middot; ${row.id}</span>
-                    <span class="status-badge ${statusClass}">${row.status}</span>
+                    <span>${escapeHtml(new Date(row.created_at).toLocaleString())} &middot; ${escapeHtml(row.id)}</span>
+                    <span class="status-badge ${escapeHtml(statusClass)}">${escapeHtml(row.status)}</span>
                 </div>
                 ${body}
                 ${showActions ? `
