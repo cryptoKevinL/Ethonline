@@ -32,3 +32,6 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/team-verify/deno.json"
 entrypoint = "./functions/team-verify/index.ts"
+
+[functions.da-lab-traffic-test]
+verify_jwt = false
