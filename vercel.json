@@ -9,21 +9,14 @@
     "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
   },
   "rewrites": [
-    {
-      "source": "/assets/(.*)",
-      "destination": "/assets/$1"
-    },
-    {
-      "source": "/favicon.ico",
-      "destination": "/favicon.ico"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/robots.txt"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/favicon.ico", "destination": "/favicon.ico" },
+    { "source": "/robots.txt", "destination": "/robots.txt" },
+    { "source": "/report", "destination": "/report/index.html" },
+    { "source": "/report/", "destination": "/report/index.html" },
+    { "source": "/report/stage2.py", "destination": "/report/stage2.py" },
+    { "source": "/report/meeting-files.zip", "destination": "/report/meeting-files.zip" },
+    { "source": "/report/implant", "destination": "/report/implant" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
